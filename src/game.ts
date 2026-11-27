@@ -5,6 +5,9 @@ export interface Country {
   continent?: string;
   subregion?: string;
   tiny?: boolean;
+  id?: string;
+  center?: number[];
+  radius?: number;
 }
 
 export interface Question {

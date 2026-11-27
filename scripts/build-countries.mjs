@@ -112,13 +112,22 @@ const countries = readJson('world-countries/countries.json')
     let raw = features50.get(c.ccn3);
     if (!raw || pointCount(outlinePath(coreArea(fixWinding(raw)))) < MIN_POINTS) raw = features10.get(c.ccn3) ?? raw;
     if (!raw) throw new Error(`Kein Umriss für ${c.cca3}`);
+    const core = coreArea(fixWinding(raw));
+    const center = geoCentroid(core);
+    // Größter Abstand vom Mittelpunkt in Grad, für den Kartenausschnitt in der Kontextansicht
+    const radius = Math.max(
+      ...core.geometry.coordinates.flat(2).map((p) => (geoDistance(center, p) * 180) / Math.PI),
+    );
     return {
       code: c.cca3,
+      id: c.ccn3,
+      center: center.map((v) => Math.round(v * 100) / 100),
+      radius: Math.round(radius * 100) / 100,
       name: NAME_OVERRIDES[c.cca3] ?? c.translations.deu.common,
       continent: continentOf(c),
       subregion: c.subregion,
       tiny: c.area < TINY_AREA_KM2,
-      path: outlinePath(coreArea(fixWinding(raw))),
+      path: outlinePath(core),
     };
   })
   .sort((a, b) => a.name.localeCompare(b.name, 'de'));
