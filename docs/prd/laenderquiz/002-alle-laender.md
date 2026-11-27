@@ -3,7 +3,7 @@
 PRD: docs/prd/laenderquiz.md
 Typ: HITL (Liste der winzigen Inselstaaten kurz prüfen)
 Blockiert durch: 001
-Status: offen
+Status: in Review
 
 ## Was
 Länderdaten einmalig aus einer frei lizenzierten Quelle (z. B. Natural Earth) aufbereiten: ISO-Code, deutscher Name, Kontinent, Teilregion, Kennzeichen „winziger Inselstaat“, vereinfachte Geometrie. Verstreute Länder auf das Kerngebiet beschränken. Das Spiel nutzt ab jetzt alle Länder.

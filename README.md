@@ -16,7 +16,11 @@ Jeder Push auf `main` wird getestet und automatisch auf GitHub Pages veröffentl
 
 ## Daten
 
-Die Umrisse stammen aus [Natural Earth](https://www.naturalearthdata.com/) (Public Domain), bezogen über das Paket [world-atlas](https://github.com/topojson/world-atlas).
+- **Umrisse:** [Natural Earth](https://www.naturalearthdata.com/) (Public Domain), bezogen über das Paket [world-atlas](https://github.com/topojson/world-atlas). 50m-Auflösung, für sehr kleine Länder 10m.
+- **Deutsche Namen, Regionen, Flächen:** [world-countries](https://github.com/mledoze/countries) (ODbL 1.0)
+- **Winzige Staaten** (unter 1000 km², nur im Modus „Schwer“): Andorra, Antigua und Barbuda, Bahrain, Barbados, Dominica, Grenada, Kiribati, Liechtenstein, Malediven, Malta, Marshallinseln, Mikronesien, Monaco, Nauru, Palau, San Marino, São Tomé und Príncipe, Seychellen, Singapur, St. Kitts und Nevis, St. Lucia, St. Vincent und die Grenadinen, Tonga, Tuvalu
+
+Alle Umrisse auf einen Blick: `uebersicht.html` (auf GitHub Pages unter `/laenderquiz/uebersicht.html`).
 
 ## Planung
 
