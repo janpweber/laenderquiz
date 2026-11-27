@@ -16,10 +16,34 @@ export interface Round {
   questions: Question[];
   index: number;
   score: number;
+  endless?: boolean;
 }
 
+export type RoundLength = number | 'endlos';
+
 export interface RoundSettings {
-  length: number;
+  length: RoundLength;
+}
+
+export type Difficulty = 'normal' | 'schwer';
+export const CONTINENTS = ['Welt', 'Afrika', 'Asien', 'Europa', 'Nordamerika', 'Südamerika', 'Ozeanien'] as const;
+export type ContinentFilter = (typeof CONTINENTS)[number];
+
+export interface PoolSettings {
+  continent: ContinentFilter;
+  difficulty: Difficulty;
+}
+
+// Länder für eine Runde: nach Kontinent gefiltert, im Modus „Normal“ ohne winzige Staaten
+export function filterCountries(countries: Country[], { continent, difficulty }: PoolSettings): Country[] {
+  return countries.filter(
+    (c) => (continent === 'Welt' || c.continent === continent) && (difficulty === 'schwer' || !c.tiny),
+  );
+}
+
+// Eigene Rundenlänge: ganze Zahl von 1 bis zur Anzahl verfügbarer Länder
+export function clampLength(value: number, available: number): number {
+  return Math.max(1, Math.min(Math.floor(value) || 1, available));
 }
 
 export type Rng = () => number;
@@ -57,13 +81,19 @@ function pickDistractors(country: Country, pool: Country[], rng: Rng): Country[]
 }
 
 export function createRound(countries: Country[], settings: RoundSettings, rng: Rng = Math.random): Round {
-  const length = Math.max(1, Math.min(settings.length, countries.length));
+  const endless = settings.length === 'endlos';
+  const length = endless ? countries.length : clampLength(settings.length as number, countries.length);
   const picked = shuffle(countries, rng).slice(0, length);
   const questions = picked.map((country) => {
     const distractors = pickDistractors(country, countries, rng);
     return { country, options: shuffle([country, ...distractors], rng) };
   });
-  return { questions, index: 0, score: 0 };
+  return { questions, index: 0, score: 0, endless };
+}
+
+// Endlosmodus: Runde nach der aktuellen Frage beenden; gewertet wird, was beantwortet ist
+export function endRound(round: Round): Round {
+  return { ...round, questions: round.questions.slice(0, round.index) };
 }
 
 export function currentQuestion(round: Round): Question | undefined {
