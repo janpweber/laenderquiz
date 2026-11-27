@@ -7,8 +7,6 @@
   --white: #ffffff;
   --grey: #e9e9e9;
   --grey-dark: #8a8a8a;
-  --good: #1f7a4d;
-  --good-bg: #e3f4ea;
   font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
   color: var(--black);
   background: var(--grey);
@@ -174,16 +172,15 @@ button {
 .options { display: flex; flex-direction: column; gap: 8px; }
 
 .card:disabled { cursor: default; opacity: 0.45; }
-.card.correct { border-color: var(--good); background: var(--good-bg); opacity: 1; }
-.card.correct .icon { border-color: var(--good); background: var(--good); color: var(--white); }
-.card.correct .label { color: var(--good); }
+.card.correct { border-color: var(--red); background: var(--red); color: var(--white); opacity: 1; }
+.card.correct .icon { border-color: var(--white); background: var(--white); color: var(--red); }
 .card.wrong { border-color: var(--black); background: var(--black); color: var(--white); opacity: 1; }
 .card.wrong .icon { border-color: var(--white); color: var(--white); }
 .card.wrong .label { text-decoration: line-through; }
 .card:disabled .chevron { visibility: hidden; }
 
 .feedback { margin: 0; min-height: 1.4em; text-align: center; font-weight: 800; font-size: 1.05rem; }
-.feedback.good { color: var(--good); }
+.feedback.good { color: var(--red); }
 .feedback.bad { color: var(--black); }
 
 @media (hover: hover) {
