@@ -125,6 +125,20 @@ function showSettings() {
   });
   custom.onchange = () => update({ length: clampLength(Number(custom.value), available) });
 
+  // Schieberegler zusätzlich zur Zahl: beim Ziehen läuft die Zahl mit,
+  // gespeichert wird beim Loslassen
+  const slider = el('input', {
+    type: 'range',
+    min: '1',
+    max: String(available),
+    step: '1',
+    value: custom.value,
+    ariaLabel: 'Anzahl Länder',
+  });
+  slider.oninput = () => (custom.value = slider.value);
+  slider.onchange = () => update({ length: clampLength(Number(slider.value), available) });
+  custom.oninput = () => (slider.value = custom.value);
+
   app.replaceChildren(
     el('section', { className: 'screen settings' }, [
       el('p', { className: 'kicker' }, ['Länderquiz']),
@@ -143,7 +157,10 @@ function showSettings() {
             length: v === 'endlos' ? 'endlos' : v === 'eigene' ? clampLength(Number(custom.value), available) : Number(v),
           }),
       ),
-      el('label', { className: 'custom', hidden: !isCustom }, [custom, el('span', {}, [`von 1 bis ${available} Ländern`])]),
+      el('div', { className: 'custom', hidden: !isCustom }, [
+        el('label', { className: 'custom-row' }, [custom, el('span', {}, [`von 1 bis ${available} Ländern`])]),
+        slider,
+      ]),
       el('h2', {}, ['Kontinent']),
       chips(
         CONTINENTS.map((c) => ({ label: c === 'Welt' ? 'Ganze Welt' : c, value: c })),

@@ -215,8 +215,15 @@ button {
   letter-spacing: 0.03em;
 }
 .chip.selected { background: var(--red); color: var(--white); }
-.custom { display: flex; align-items: center; gap: 10px; font-weight: 700; }
-.custom input {
+.custom { display: flex; flex-direction: column; gap: 6px; }
+.custom-row { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.custom input[type='range'] {
+  width: 100%;
+  height: 32px;
+  accent-color: var(--red);
+  margin: 0;
+}
+.custom input[type='number'] {
   width: 96px;
   min-height: 44px;
   padding: 0 12px;
