@@ -27,6 +27,8 @@ Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für 
 12. Als Spielerin will ich im Endlosmodus jederzeit aufhören können und dann meine Auswertung sehen.
 13. Als Spielerin will ich, dass sich innerhalb einer Runde kein Land wiederholt, solange noch ungespielte Länder übrig sind.
 
+22. Als Spielerin will ich bei einer schwierigen Frage einen Hinweis anfordern, der mir eine Flagge zeigt (Variante nach dem MVP festlegen), damit ich auch dann eine Chance habe, wenn ich den Umriss nicht erkenne.
+
 ### Rekord und Bestenliste
 14. Als Spielerin will ich meinen persönlichen Rekord sehen, der auf meinem Gerät gespeichert bleibt, damit ich mich selbst übertreffen kann.
 15. Als Spielerin will ich nach einer Standardrunde freiwillig einen Namen eingeben und mich in die Bestenliste eintragen, damit ich mich mit anderen vergleichen kann.
@@ -54,6 +56,7 @@ Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für 
 - **Timer:** 10 Sekunden pro Frage, wenn eingeschaltet. Ablauf zählt als falsche Antwort. Die Antwortzeit wird pro Frage gemessen und für die Bestenliste aufsummiert.
 - **Lokaler Rekord:** Gespeichert im Browser (localStorage), getrennt nach Einstellungs-Kombination, damit eine 1-Länder-Runde nicht den 10er-Rekord schlägt. Mindestens der Rekord der Standardrunde wird prominent gezeigt.
 - **Bestenliste-Client:** Lesen der Top-Einträge und Eintragen eines Ergebnisses. Fehler werden abgefangen und freundlich angezeigt.
+- **Hinweis:** Nach dem MVP: pro Frage ein Hinweis, der eine Flagge einblendet (gesuchtes Land oder alle 4 Antworten, noch offen). Flaggen als SVG aus einer frei lizenzierten Quelle (z. B. flag-icons, MIT). In der Standardrunde für die Bestenliste ausgeblendet.
 - **Bildschirme:** Start (Einstellungen), Spiel, Ergebnis (mit optionalem Eintrag), Bestenliste.
 
 ### Spielregeln im Detail
@@ -113,7 +116,7 @@ Supabase-URL und Anon-Key werden zur Build-Zeit eingesetzt. Der Anon-Key ist öf
 - Andere Sprachen als Deutsch
 - Benutzerkonten, Login, Profile
 - Werbung, Analytics, Tracking
-- Andere Spielmodi (Hauptstädte, Flaggen, Karte anklicken, Freitext-Eingabe)
+- Andere Spielmodi (Hauptstädte, Flaggen als eigener Quiz-Modus, Karte anklicken, Freitext-Eingabe)
 - Nicht-UN-Gebiete (z. B. Kosovo, Taiwan, Westsahara, Überseegebiete)
 - Bestenlisten für andere Einstellungen als die Standardrunde
 - Moderations-Oberfläche in der App (Löschen nur im Supabase-Dashboard)
@@ -128,3 +131,4 @@ Supabase-URL und Anon-Key werden zur Build-Zeit eingesetzt. Der Anon-Key ist öf
 - Endlosmodus endet, wenn die Spielerin aufhört oder alle Länder des Filters gespielt sind.
 - Namenslänge maximal 20 Zeichen.
 - Der lokale Rekord wird je Einstellungs-Kombination geführt.
+- Der Hinweis ist in der Standardrunde für die Bestenliste ausgeblendet.

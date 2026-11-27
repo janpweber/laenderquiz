@@ -62,3 +62,58 @@ describe('Runde', () => {
     expect(round.questions).toHaveLength(5);
   });
 });
+
+describe('Ablenker', () => {
+  const world: Country[] = [
+    // Westeuropa (4)
+    { code: 'DEU', name: 'Deutschland', path: '', continent: 'Europa', subregion: 'Western Europe' },
+    { code: 'FRA', name: 'Frankreich', path: '', continent: 'Europa', subregion: 'Western Europe' },
+    { code: 'BEL', name: 'Belgien', path: '', continent: 'Europa', subregion: 'Western Europe' },
+    { code: 'NLD', name: 'Niederlande', path: '', continent: 'Europa', subregion: 'Western Europe' },
+    // Südeuropa (2)
+    { code: 'ITA', name: 'Italien', path: '', continent: 'Europa', subregion: 'Southern Europe' },
+    { code: 'ESP', name: 'Spanien', path: '', continent: 'Europa', subregion: 'Southern Europe' },
+    // Asien
+    { code: 'JPN', name: 'Japan', path: '', continent: 'Asien', subregion: 'Eastern Asia' },
+    { code: 'CHN', name: 'China', path: '', continent: 'Asien', subregion: 'Eastern Asia' },
+    { code: 'IND', name: 'Indien', path: '', continent: 'Asien', subregion: 'Southern Asia' },
+    // Ozeanien (allein in seiner Teilregion und fast allein im Kontinent)
+    { code: 'AUS', name: 'Australien', path: '', continent: 'Ozeanien', subregion: 'Australia and New Zealand' },
+  ];
+
+  const optionsFor = (code: string, seed: number) => {
+    const round = createRound(world, { length: world.length }, seeded(seed));
+    return round.questions.find((q) => q.country.code === code)!.options;
+  };
+
+  it('kommen aus derselben Teilregion, wenn es dort genug Länder gibt', () => {
+    for (let seed = 1; seed < 20; seed++) {
+      const options = optionsFor('DEU', seed);
+      expect(options.every((o) => o.subregion === 'Western Europe')).toBe(true);
+    }
+  });
+
+  it('füllen mit demselben Kontinent auf, wenn die Teilregion zu klein ist', () => {
+    for (let seed = 1; seed < 20; seed++) {
+      const options = optionsFor('ITA', seed);
+      expect(options.every((o) => o.continent === 'Europa')).toBe(true);
+      expect(options.map((o) => o.code)).toContain('ESP');
+    }
+  });
+
+  it('nehmen Länder aus aller Welt, wenn der Kontinent zu klein ist', () => {
+    const options = optionsFor('AUS', 1);
+    expect(options).toHaveLength(4);
+    expect(new Set(options.map((o) => o.code)).size).toBe(4);
+  });
+
+  it('enthalten nie die richtige Antwort doppelt und keine Wiederholung', () => {
+    for (let seed = 1; seed < 20; seed++) {
+      const round = createRound(world, { length: world.length }, seeded(seed));
+      for (const q of round.questions) {
+        expect(new Set(q.options.map((o) => o.code)).size).toBe(4);
+        expect(q.options.filter((o) => o.code === q.country.code)).toHaveLength(1);
+      }
+    }
+  });
+});

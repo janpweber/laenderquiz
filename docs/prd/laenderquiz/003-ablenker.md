@@ -3,7 +3,7 @@
 PRD: docs/prd/laenderquiz.md
 Typ: AFK
 Blockiert durch: 002
-Status: offen
+Status: in Review
 
 ## Was
 Rundenlogik als reine Funktionen mit injizierbarem Zufall: Länderfolge ohne Wiederholung, drei Ablenker bevorzugt aus derselben Teilregion, dann Kontinent, dann weltweit, immer nur aus den erlaubten Ländern der Runde. Antworten werden gemischt.
