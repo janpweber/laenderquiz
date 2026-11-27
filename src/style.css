@@ -80,9 +80,10 @@ h1 {
   color: var(--red);
 }
 
-.tree {
-  width: min(58vw, 240px);
-  margin: 4px auto 0;
+.map {
+  width: auto;
+  height: min(36dvh, 300px);
+  margin: 6px auto 4px;
 }
 
 .status {
@@ -191,19 +192,3 @@ button {
 
 [hidden] { display: none !important; }
 
-/* Logo: Berlin aus Dreiecken plus Schriftzug */
-.logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.logo img { width: 84px; height: auto; }
-.logo span {
-  font-size: 1.5rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--red);
-}

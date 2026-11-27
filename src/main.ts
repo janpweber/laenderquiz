@@ -1,7 +1,6 @@
 import countries from './countries.generated.json';
 import { answerQuestion, createRound, currentQuestion, isFinished, type Country, type Round } from './game';
-import treeUrl from './tree.svg';
-import berlinUrl from './berlin.svg';
+import germanyUrl from './germany.svg';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const ROUND_LENGTH = 10;
@@ -48,8 +47,9 @@ function card(label: string, iconContent: string, onclick: () => void, className
   ]);
 }
 
-function tree(): HTMLImageElement {
-  return el('img', { className: 'tree', src: treeUrl, alt: '' });
+// Deutschland aus Dreiecken, Berlin und Freiburg schwarz markiert
+function map(): HTMLImageElement {
+  return el('img', { className: 'map', src: germanyUrl, alt: 'Deutschlandkarte aus Dreiecken mit Berlin und Freiburg' });
 }
 
 function outline(country: Country): SVGSVGElement {
@@ -66,20 +66,13 @@ function outline(country: Country): SVGSVGElement {
 
 const newRound = () => showQuestion(createRound(countries, { length: ROUND_LENGTH }));
 
-function logo(): HTMLDivElement {
-  return el('div', { className: 'logo' }, [
-    el('img', { src: berlinUrl, alt: '' }),
-    el('span', {}, ['Länderquiz']),
-  ]);
-}
-
 function showStart() {
   app.replaceChildren(
     el('section', { className: 'screen start' }, [
-      logo(),
+      el('p', { className: 'kicker' }, ['Länderquiz']),
       el('h1', {}, ['Welches Land ist das?']),
       el('p', { className: 'lead' }, ['Erkennst du die Länder an ihrem Umriss?']),
-      tree(),
+      map(),
       card('Los geht’s', 'play', newRound, 'primary'),
     ]),
   );
@@ -134,7 +127,7 @@ function showResult(round: Round) {
       el('h1', {}, ['Geschafft!']),
       el('p', { className: 'score' }, [`${round.score} von ${total}`]),
       el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
-      tree(),
+      map(),
       card('Neue Runde', 'again', newRound, 'primary'),
     ]),
   );

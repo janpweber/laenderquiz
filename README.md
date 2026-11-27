@@ -21,5 +21,3 @@ Die Umrisse stammen aus [Natural Earth](https://www.naturalearthdata.com/) (Publ
 ## Planung
 
 Ziel und Umsetzungsschritte stehen in [docs/prd](docs/prd/laenderquiz.md).
-
-Der Berliner Stadtumriss im Logo stammt aus [@svg-maps/germany](https://github.com/VictorCazanave/svg-maps) (CC BY 4.0, © Victor Cazanave) und wird mit `node scripts/build-berlin.mjs` zu Dreiecken umgebaut.
