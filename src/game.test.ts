@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { createRound, answerQuestion, currentQuestion, isFinished, type Country } from './game';
+import {
+  answerQuestion,
+  clampLength,
+  createRound,
+  currentQuestion,
+  endRound,
+  filterCountries,
+  isFinished,
+  type Country,
+} from './game';
 
 const countries: Country[] = ['DEU', 'ITA', 'JPN', 'BRA', 'AUS'].map((code) => ({
   code,
@@ -115,5 +124,48 @@ describe('Ablenker', () => {
         expect(q.options.filter((o) => o.code === q.country.code)).toHaveLength(1);
       }
     }
+  });
+});
+
+describe('Einstellungen', () => {
+  const pool: Country[] = [
+    { code: 'DEU', name: 'Deutschland', path: '', continent: 'Europa', subregion: 'Western Europe' },
+    { code: 'FRA', name: 'Frankreich', path: '', continent: 'Europa', subregion: 'Western Europe' },
+    { code: 'MCO', name: 'Monaco', path: '', continent: 'Europa', subregion: 'Western Europe', tiny: true },
+    { code: 'JPN', name: 'Japan', path: '', continent: 'Asien', subregion: 'Eastern Asia' },
+    { code: 'CHN', name: 'China', path: '', continent: 'Asien', subregion: 'Eastern Asia' },
+    { code: 'SGP', name: 'Singapur', path: '', continent: 'Asien', subregion: 'South-Eastern Asia', tiny: true },
+  ];
+
+  it('„Normal“ lässt winzige Staaten weg, „Schwer“ nimmt alle', () => {
+    expect(filterCountries(pool, { continent: 'Welt', difficulty: 'normal' }).map((c) => c.code)).toEqual([
+      'DEU', 'FRA', 'JPN', 'CHN',
+    ]);
+    expect(filterCountries(pool, { continent: 'Welt', difficulty: 'schwer' })).toHaveLength(6);
+  });
+
+  it('filtert nach Kontinent', () => {
+    expect(filterCountries(pool, { continent: 'Asien', difficulty: 'schwer' }).map((c) => c.code)).toEqual([
+      'JPN', 'CHN', 'SGP',
+    ]);
+  });
+
+  it('begrenzt eine eigene Rundenlänge auf 1 bis Anzahl der Länder', () => {
+    expect(clampLength(0, 4)).toBe(1);
+    expect(clampLength(7, 4)).toBe(4);
+    expect(clampLength(3, 4)).toBe(3);
+    expect(clampLength(2.7, 4)).toBe(2);
+  });
+
+  it('spielt im Endlosmodus alle Länder und lässt sich jederzeit beenden', () => {
+    let round = createRound(pool, { length: 'endlos' }, seeded(1));
+    expect(round.questions).toHaveLength(pool.length);
+    expect(round.endless).toBe(true);
+    round = answerQuestion(round, currentQuestion(round)!.country.code).round;
+    round = answerQuestion(round, 'XXX').round;
+    round = endRound(round);
+    expect(isFinished(round)).toBe(true);
+    expect(round.questions).toHaveLength(2);
+    expect(round.score).toBe(1);
   });
 });

@@ -3,7 +3,7 @@
 PRD: docs/prd/laenderquiz.md
 Typ: AFK
 Blockiert durch: 003
-Status: offen
+Status: in Review
 
 ## Was
 Startbildschirm mit Rundenlänge (10 vorausgewählt, 20, endlos, freie Zahl 1 bis N), Kontinent-Filter und Schwierigkeit „Normal/Schwer“. Endlos läuft, bis man beendet oder alle Länder gespielt sind. „Neue Runde“ behält die Einstellungen.
