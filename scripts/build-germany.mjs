@@ -158,9 +158,11 @@ const style = `<style>
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Deutschland aus Dreiecken, Berlin und Freiburg markiert">
 ${style}
 <g stroke="#ffffff" stroke-opacity="0.3" stroke-width="0.6">
-${pieces.join('\n')}
+${pieces.filter((p) => !p.includes('data-city')).join('\n')}
 </g>
+<!-- Städte zuletzt, damit sie beim Pulsieren über allen anderen liegen -->
 <path class="de-border" d="${outlinePath}" fill="none" stroke="#b00000" stroke-width="1.5" stroke-linejoin="round"/>
+${pieces.filter((p) => p.includes('data-city')).join('\n')}
 </svg>
 `;
 writeFileSync(new URL('../src/germany.svg', import.meta.url), svg);
