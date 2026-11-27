@@ -1,6 +1,6 @@
 import countries from './countries.generated.json';
 import { answerQuestion, createRound, currentQuestion, isFinished, type Country, type Round } from './game';
-import germanyUrl from './germany.svg';
+import germanySvg from './germany.svg?raw';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const ROUND_LENGTH = 10;
@@ -48,8 +48,11 @@ function card(label: string, iconContent: string, onclick: () => void, className
 }
 
 // Deutschland aus Dreiecken, Berlin und Freiburg schwarz markiert
-function map(): HTMLImageElement {
-  return el('img', { className: 'map', src: germanyUrl, alt: 'Deutschlandkarte aus Dreiecken mit Berlin und Freiburg' });
+// Inline eingebunden, damit die Animation bei jedem Anzeigen neu startet
+function map(): HTMLDivElement {
+  const wrap = el('div', { className: 'map' });
+  wrap.innerHTML = germanySvg;
+  return wrap;
 }
 
 function outline(country: Country): SVGSVGElement {

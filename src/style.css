@@ -81,10 +81,10 @@ h1 {
 }
 
 .map {
-  width: auto;
   height: min(36dvh, 300px);
   margin: 6px auto 4px;
 }
+.map svg { height: 100%; width: auto; display: block; overflow: visible; }
 
 .status {
   display: flex;

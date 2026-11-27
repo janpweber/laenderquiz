@@ -83,19 +83,35 @@ const pick = () => {
 
 const f = (n) => n.toFixed(1);
 const pts = (list) => list.map(([x, y]) => `${f(x)},${f(y)}`).join(' ');
+// Einflug-Animation: jedes Dreieck bekommt eine zufällige Verzögerung,
+// die Städte-Dreiecke kommen zuletzt und pulsieren danach dauerhaft.
+const delayRng = random(99);
+const FLY_IN = 1.2;
 const polygons = tris.map((t) => {
   const city = cities.find((c) => contains(t, c.point));
-  return city
-    ? `<polygon points="${pts(t)}" fill="#000000" data-city="${city.name}"/>`
-    : `<polygon points="${pts(t)}" fill="${pick()}"/>`;
+  if (city) {
+    return `<polygon class="tri city" style="--d:${FLY_IN + 0.15}s" points="${pts(t)}" fill="#000000" data-city="${city.name}"/>`;
+  }
+  return `<polygon class="tri" style="--d:${(delayRng() * FLY_IN).toFixed(2)}s" points="${pts(t)}" fill="${pick()}"/>`;
 });
 
+const style = `<style>
+.tri { transform-box: fill-box; transform-origin: center; animation: fly 0.5s cubic-bezier(.2,.8,.3,1.2) var(--d) both; }
+.city { animation: fly 0.5s cubic-bezier(.2,.8,.3,1.2) var(--d) both, pulse 1.6s ease-in-out calc(var(--d) + 0.5s) infinite; }
+.de-border { animation: fade 0.6s ease-out ${FLY_IN}s both; }
+@keyframes fly { from { opacity: 0; transform: translateY(-40px) rotate(-25deg) scale(0.4); } to { opacity: 1; transform: none; } }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tri, .city, .de-border { animation: none; } }
+</style>`;
+
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Deutschland aus Dreiecken, Berlin und Freiburg markiert">
+${style}
 <defs><clipPath id="de"><path d="${outlinePath}"/></clipPath></defs>
 <g clip-path="url(#de)" stroke="#ffffff" stroke-opacity="0.3" stroke-width="0.6">
 ${polygons.join('\n')}
 </g>
-<path d="${outlinePath}" fill="none" stroke="#b00000" stroke-width="1.5" stroke-linejoin="round"/>
+<path class="de-border" d="${outlinePath}" fill="none" stroke="#b00000" stroke-width="1.5" stroke-linejoin="round"/>
 </svg>
 `;
 writeFileSync(new URL('../src/germany.svg', import.meta.url), svg);
