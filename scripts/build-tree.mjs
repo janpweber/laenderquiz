@@ -64,8 +64,31 @@ const trunk = [
 ];
 const trunkColors = ['#9e0000', '#b00000', '#c40000', '#a80000', '#b30000', '#9e0000'];
 
+// Kleine Berliner Silhouette am Fuß des Baums: Fernsehturm und Brandenburger Tor,
+// ebenfalls aus Dreiecken bzw. kantigen Flächen
+const skyline = [];
+// Fernsehturm links
+skyline.push(poly([[96, 395], [104, 395], [102, 300], [98, 300]], '#c40000'));
+skyline.push(poly([[90, 300], [100, 288], [110, 300], [100, 312]], '#e60000'));
+skyline.push(poly([[90, 300], [110, 300], [100, 312]], '#a80000'));
+skyline.push(poly([[99, 288], [101, 288], [100.6, 262], [99.4, 262]], '#c40000'));
+// Brandenburger Tor rechts
+const gx = 268;
+skyline.push(poly([[gx - 4, 352], [gx + 74, 352], [gx + 70, 344], [gx, 344]], '#c40000'));
+skyline.push(poly([[gx + 22, 344], [gx + 35, 334], [gx + 48, 344]], '#e60000'));
+skyline.push(poly([[gx - 2, 360], [gx + 72, 360], [gx + 72, 352], [gx - 2, 352]], '#a80000'));
+for (let i = 0; i < 6; i++) {
+  const x = gx + i * 13.4;
+  skyline.push(poly([[x, 395], [x + 6, 395], [x + 6, 360], [x, 360]], i % 2 ? '#d4142a' : '#b00000'));
+}
+// Boden aus flachen Dreiecken
+for (let x = 40; x < 360; x += 20) {
+  skyline.push(poly([[x, 395], [x + 20, 395], [x + 10, 389 - rng() * 5]], pick()));
+}
+
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Stilisierter roter Baum">
 ${tris.map((t) => poly(t, pick())).join('\n')}
+${skyline.join('\n')}
 ${trunk.map((t, i) => poly(t, trunkColors[i])).join('\n')}
 </svg>
 `;
