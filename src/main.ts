@@ -283,7 +283,8 @@ function showResult(round: Round) {
       el('p', { className: 'score' }, [`${round.score} von ${total}`]),
       el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
       map(),
-      card('Neue Runde', 'again', newRound, 'primary'),
+      card('Neue Runde', 'again', newRound, 'primary', summary(settings, pool(settings).length)),
+      card('Einstellungen', 'settings', showSettings, 'secondary'),
     ]),
   );
 }
