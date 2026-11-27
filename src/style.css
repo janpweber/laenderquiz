@@ -261,3 +261,16 @@ button {
 @media (hover: hover) {
   .chip:not(.selected):hover { border-color: var(--red); }
 }
+
+/* Kontextkarte nach der Antwort */
+.context-map {
+  width: 100%;
+  max-height: 34dvh;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  background: var(--white);
+}
+.context-map .sea { fill: var(--white); }
+.context-map .land { fill: #d4d4d4; stroke: var(--white); stroke-width: 1; }
+.context-map .target { fill: var(--red); stroke: var(--red-dark); stroke-width: 1; }
+.context-map .marker { fill: none; stroke: var(--red); stroke-width: 5; }

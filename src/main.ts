@@ -12,6 +12,7 @@ import {
   type Round,
 } from './game';
 import germanySvg from './germany.svg?raw';
+import { contextMap } from './context-map';
 import { loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -199,6 +200,28 @@ function showQuestion(round: Round) {
   if (isFinished(round)) return showResult(round);
   const question = currentQuestion(round)!;
   const feedback = el('p', { className: 'feedback', ariaLive: 'polite' });
+  const shape = outline(question.country);
+  let mapView: SVGSVGElement | undefined;
+  // Nach der Antwort: Land in seiner Region zeigen, zum Lernen
+  const mapToggle = el('button', { className: 'text-button', hidden: true }, ['Auf der Karte zeigen']);
+  mapToggle.onclick = async () => {
+    const showingMap = mapView?.isConnected;
+    if (showingMap) {
+      mapView!.replaceWith(shape);
+      mapToggle.textContent = 'Auf der Karte zeigen';
+      return;
+    }
+    const c = question.country;
+    if (!c.id || !c.center || c.radius === undefined) return;
+    mapToggle.textContent = 'Karte lädt …';
+    try {
+      mapView ??= await contextMap({ id: c.id, center: c.center, radius: c.radius, tiny: c.tiny });
+      shape.replaceWith(mapView);
+      mapToggle.textContent = 'Umriss zeigen';
+    } catch {
+      mapToggle.textContent = 'Karte konnte nicht geladen werden';
+    }
+  };
   const next = card('Weiter', 'arrow', () => {}, 'primary next');
   next.hidden = true;
 
@@ -223,6 +246,7 @@ function showQuestion(round: Round) {
     next.querySelector('.label')!.textContent = isFinished(result.round) ? 'Zum Ergebnis' : 'Weiter';
     next.onclick = () => showQuestion(result.round);
     next.hidden = false;
+    mapToggle.hidden = false;
     next.focus();
   }
 
@@ -232,9 +256,10 @@ function showQuestion(round: Round) {
         el('span', {}, [round.endless ? `Frage ${round.index + 1}` : `Frage ${round.index + 1} von ${round.questions.length}`]),
         el('span', {}, [`${round.score} richtig`]),
       ]),
-      outline(question.country),
+      shape,
       el('div', { className: 'options' }, buttons),
       feedback,
+      mapToggle,
       next,
       ...(round.endless
         ? [el('button', { className: 'text-button', onclick: () => finish(endRound(latest)) }, ['Runde beenden'])]
