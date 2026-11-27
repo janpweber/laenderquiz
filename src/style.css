@@ -1,15 +1,15 @@
+/* Farbwelt angelehnt an Havas: Rot, Schwarz, Weiß, dazu die 25°-Diagonale */
 :root {
-  --bg: #f4f1ea;
-  --ink: #1d3557;
-  --land: #2a6f97;
-  --good: #2d6a4f;
-  --good-bg: #d8f3dc;
-  --bad: #9d0208;
-  --bad-bg: #ffe5e5;
-  --card: #ffffff;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: var(--ink);
-  background: var(--bg);
+  --red: #d01f39;
+  --red-dark: #a3162c;
+  --black: #111111;
+  --white: #ffffff;
+  --grey: #f2f2f2;
+  --good: #1f7a4d;
+  --good-bg: #e3f4ea;
+  font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+  color: var(--black);
+  background: var(--white);
 }
 
 * { box-sizing: border-box; }
@@ -35,35 +35,70 @@ body {
   gap: 12px;
 }
 
+/* Start und Ergebnis: schwarze Fläche mit roter Diagonale */
 .start, .result {
+  position: relative;
   justify-content: center;
   text-align: center;
+  color: var(--white);
+  background: var(--black);
+  margin: -16px;
+  padding: 32px 24px;
+  overflow: hidden;
 }
+.start::before, .result::before {
+  content: '';
+  position: absolute;
+  left: -60%;
+  right: -20%;
+  top: 100%;
+  height: 300%;
+  background: var(--red);
+  transform: rotate(-25deg);
+  transform-origin: left top;
+  z-index: 0;
+}
+.start > *, .result > * { position: relative; z-index: 1; }
 
-h1 { font-size: 2.2rem; margin: 0; }
-.lead { font-size: 1.1rem; margin: 0 0 16px; opacity: 0.8; }
-.score { font-size: 3.5rem; font-weight: 700; margin: 8px 0 0; }
+h1 {
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.lead { font-size: 1.1rem; margin: 0 0 20px; opacity: 0.85; }
+.score { font-size: 4rem; font-weight: 800; margin: 8px 0 0; color: var(--white); }
+
+.kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--red);
+}
 
 .status {
   display: flex;
   justify-content: space-between;
-  font-weight: 600;
-  font-size: 0.95rem;
-  opacity: 0.8;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
+.status span:last-child { color: var(--red); }
 
 .outline {
   width: 100%;
   max-height: 42dvh;
   aspect-ratio: 1;
-  background: var(--card);
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+  background: var(--grey);
+  border-radius: 4px;
 }
 .outline path {
-  fill: var(--land);
-  stroke: var(--ink);
-  stroke-width: 2;
+  fill: var(--red);
+  stroke: var(--red-dark);
+  stroke-width: 1.5;
   stroke-linejoin: round;
 }
 
@@ -76,7 +111,7 @@ h1 { font-size: 2.2rem; margin: 0; }
 button {
   font: inherit;
   border: none;
-  border-radius: 12px;
+  border-radius: 4px;
   cursor: pointer;
   color: inherit;
   touch-action: manipulation;
@@ -85,30 +120,33 @@ button {
 .option {
   min-height: 64px;
   padding: 10px 8px;
-  background: var(--card);
-  border: 2px solid transparent;
+  background: var(--white);
+  border: 2px solid var(--black);
   font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
 }
-.option:disabled { cursor: default; opacity: 0.6; }
+.option:disabled { cursor: default; opacity: 0.35; }
 .option.correct { background: var(--good-bg); border-color: var(--good); color: var(--good); opacity: 1; }
-.option.wrong { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); opacity: 1; }
+.option.wrong { background: var(--black); border-color: var(--black); color: var(--white); opacity: 1; text-decoration: line-through; }
 
 .primary {
   min-height: 56px;
   padding: 0 24px;
-  background: var(--ink);
-  color: #fff;
-  font-size: 1.15rem;
-  font-weight: 700;
+  background: var(--red);
+  color: var(--white);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
+.start .primary, .result .primary { background: var(--white); color: var(--black); }
 
-.feedback { margin: 0; min-height: 1.5em; text-align: center; font-weight: 700; font-size: 1.1rem; }
+.feedback { margin: 0; min-height: 1.5em; text-align: center; font-weight: 800; font-size: 1.1rem; }
 .feedback.good { color: var(--good); }
-.feedback.bad { color: var(--bad); }
+.feedback.bad { color: var(--black); }
 
 @media (hover: hover) {
-  .option:not(:disabled):hover { border-color: var(--land); }
+  .option:not(:disabled):hover { background: var(--grey); }
+  .primary:hover { filter: brightness(1.1); }
 }

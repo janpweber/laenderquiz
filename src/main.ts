@@ -30,7 +30,8 @@ function outline(country: Country): SVGSVGElement {
 function showStart() {
   app.replaceChildren(
     el('section', { className: 'screen start' }, [
-      el('h1', {}, ['Länderquiz']),
+      el('p', { className: 'kicker' }, ['Länderquiz']),
+      el('h1', {}, ['Welches Land ist das?']),
       el('p', { className: 'lead' }, ['Erkennst du die Länder an ihrem Umriss?']),
       el('button', { className: 'primary', onclick: () => showQuestion(createRound(countries, { length: ROUND_LENGTH })) }, [
         'Los geht’s',
@@ -83,6 +84,7 @@ function showResult(round: Round) {
   const total = round.questions.length;
   app.replaceChildren(
     el('section', { className: 'screen result' }, [
+      el('p', { className: 'kicker' }, ['Ergebnis']),
       el('h1', {}, ['Geschafft!']),
       el('p', { className: 'score' }, [`${round.score} von ${total}`]),
       el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
