@@ -1,9 +1,11 @@
-import countries from './countries.generated.json';
+import allCountries from './countries.generated.json';
 import { answerQuestion, createRound, currentQuestion, isFinished, type Country, type Round } from './game';
 import germanySvg from './germany.svg?raw';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const ROUND_LENGTH = 10;
+// Bis der Startbildschirm Einstellungen hat (Slice 4): Modus „Normal“, also ohne winzige Staaten
+const countries = allCountries.filter((c) => !c.tiny);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -58,7 +60,8 @@ function map(): HTMLDivElement {
 function outline(country: Country): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 1000 1000');
-  svg.setAttribute('class', 'outline');
+  // Winzige Staaten bekommen eine dicke Kontur, damit sie überhaupt sichtbar sind
+  svg.setAttribute('class', country.tiny ? 'outline tiny' : 'outline');
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', 'Umriss eines Landes');
   const path = document.createElementNS(SVG_NS, 'path');

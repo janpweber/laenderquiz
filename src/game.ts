@@ -2,6 +2,9 @@ export interface Country {
   code: string;
   name: string;
   path: string;
+  continent?: string;
+  subregion?: string;
+  tiny?: boolean;
 }
 
 export interface Question {
