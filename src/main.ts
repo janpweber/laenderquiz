@@ -1,6 +1,7 @@
 import countries from './countries.generated.json';
 import { answerQuestion, createRound, currentQuestion, isFinished, type Country, type Round } from './game';
 import treeUrl from './tree.svg';
+import berlinUrl from './berlin.svg';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const ROUND_LENGTH = 10;
@@ -65,10 +66,17 @@ function outline(country: Country): SVGSVGElement {
 
 const newRound = () => showQuestion(createRound(countries, { length: ROUND_LENGTH }));
 
+function logo(): HTMLDivElement {
+  return el('div', { className: 'logo' }, [
+    el('img', { src: berlinUrl, alt: '' }),
+    el('span', {}, ['Länderquiz']),
+  ]);
+}
+
 function showStart() {
   app.replaceChildren(
     el('section', { className: 'screen start' }, [
-      el('p', { className: 'kicker' }, ['Länderquiz']),
+      logo(),
       el('h1', {}, ['Welches Land ist das?']),
       el('p', { className: 'lead' }, ['Erkennst du die Länder an ihrem Umriss?']),
       tree(),
