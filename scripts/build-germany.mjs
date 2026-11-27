@@ -82,24 +82,74 @@ const pick = () => {
 };
 
 const f = (n) => n.toFixed(1);
-const pts = (list) => list.map(([x, y]) => `${f(x)},${f(y)}`).join(' ');
-// Einflug-Animation: jedes Dreieck bekommt eine zufällige Verzögerung,
-// die Städte-Dreiecke kommen zuletzt und pulsieren danach dauerhaft.
-const delayRng = random(99);
-const FLY_IN = 1.2;
-const polygons = tris.map((t) => {
-  const city = cities.find((c) => contains(t, c.point));
-  if (city) {
-    return `<polygon class="tri city" style="--d:${FLY_IN + 0.15}s" points="${pts(t)}" fill="#000000" data-city="${city.name}"/>`;
+// Dreiecke werden geometrisch auf den Umriss zugeschnitten (statt per
+// clip-path), damit sie beim Einfliegen auch außerhalb Deutschlands sichtbar sind.
+const rings = (germany.geometry.type === 'Polygon' ? [germany.geometry.coordinates] : germany.geometry.coordinates).map(
+  (poly) => poly[0].map((c) => projection(c)),
+);
+// Sutherland-Hodgman: beliebiges Polygon an einem konvexen Dreieck abschneiden
+function clipToTriangle(subject, tri) {
+  const area = (tri[1][0] - tri[0][0]) * (tri[2][1] - tri[0][1]) - (tri[1][1] - tri[0][1]) * (tri[2][0] - tri[0][0]);
+  const sign = Math.sign(area);
+  let out = subject;
+  for (let i = 0; i < 3 && out.length; i++) {
+    const a = tri[i];
+    const b = tri[(i + 1) % 3];
+    const side = (p) => sign * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]));
+    const input = out;
+    out = [];
+    for (let k = 0; k < input.length; k++) {
+      const cur = input[k];
+      const prev = input[(k + input.length - 1) % input.length];
+      const sc = side(cur);
+      const sp = side(prev);
+      if (sc >= 0) {
+        if (sp < 0) out.push(intersect(prev, cur, sp, sc));
+        out.push(cur);
+      } else if (sp >= 0) {
+        out.push(intersect(prev, cur, sp, sc));
+      }
+    }
   }
-  return `<polygon class="tri" style="--d:${(delayRng() * FLY_IN).toFixed(2)}s" points="${pts(t)}" fill="${pick()}"/>`;
-});
+  return out;
+}
+const intersect = (p, q, sp, sq) => {
+  const t = sp / (sp - sq);
+  return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+};
+const polyArea = (pts) => Math.abs(pts.reduce((sum, p, i) => { const q = pts[(i + 1) % pts.length]; return sum + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
 
+// Umgekehrte Explosion: jedes Stück startet weit außerhalb, in Richtung vom
+// Kartenmittelpunkt weg, und fliegt mit Drehung an seinen Platz. Die
+// Städte-Dreiecke kommen zuletzt und pulsieren danach dauerhaft.
+const motion = random(99);
+const CENTER = [W / 2, H / 2];
+const SPREAD = 0.45;
+const pieces = [];
+for (const t of tris) {
+  const parts = rings.map((ring) => clipToTriangle(ring, t)).filter((p) => p.length >= 3 && polyArea(p) > 0.5);
+  if (!parts.length) continue;
+  const city = cities.find((c) => contains(t, c.point));
+  const cx = (t[0][0] + t[1][0] + t[2][0]) / 3;
+  const cy = (t[0][1] + t[1][1] + t[2][1]) / 3;
+  const angle = Math.atan2(cy - CENTER[1], cx - CENTER[0]) + (motion() - 0.5) * 0.8;
+  const dist = 900 + motion() * 500;
+  const x = Math.cos(angle) * dist;
+  const y = Math.sin(angle) * dist;
+  const r = Math.round((motion() - 0.5) * 720);
+  const delay = city ? SPREAD + 0.25 : motion() * SPREAD;
+  const d = parts.map((p) => `M${p.map(([px, py]) => `${f(px)},${f(py)}`).join('L')}Z`).join('');
+  pieces.push(
+    `<path class="tri${city ? ' city' : ''}" style="--x:${f(x)}px;--y:${f(y)}px;--r:${r}deg;--d:${delay.toFixed(2)}s" d="${d}" fill="${city ? '#000000' : pick()}"${city ? ` data-city="${city.name}"` : ''}/>`,
+  );
+}
+
+const DURATION = 1.1;
 const style = `<style>
-.tri { transform-box: fill-box; transform-origin: center; animation: fly 0.5s cubic-bezier(.2,.8,.3,1.2) var(--d) both; }
-.city { animation: fly 0.5s cubic-bezier(.2,.8,.3,1.2) var(--d) both, pulse 1.6s ease-in-out calc(var(--d) + 0.5s) infinite; }
-.de-border { animation: fade 0.6s ease-out ${FLY_IN}s both; }
-@keyframes fly { from { opacity: 0; transform: translateY(-40px) rotate(-25deg) scale(0.4); } to { opacity: 1; transform: none; } }
+.tri { transform-box: fill-box; transform-origin: center; animation: implode ${DURATION}s cubic-bezier(.15,.7,.25,1) var(--d) both; }
+.city { animation: implode ${DURATION}s cubic-bezier(.15,.7,.25,1) var(--d) both, pulse 1.6s ease-in-out calc(var(--d) + ${DURATION}s) infinite; }
+.de-border { animation: fade 0.5s ease-out ${(SPREAD + 0.25 + DURATION - 0.2).toFixed(2)}s both; }
+@keyframes implode { from { transform: translate(var(--x), var(--y)) rotate(var(--r)); } to { transform: none; } }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .tri, .city, .de-border { animation: none; } }
@@ -107,12 +157,11 @@ const style = `<style>
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Deutschland aus Dreiecken, Berlin und Freiburg markiert">
 ${style}
-<defs><clipPath id="de"><path d="${outlinePath}"/></clipPath></defs>
-<g clip-path="url(#de)" stroke="#ffffff" stroke-opacity="0.3" stroke-width="0.6">
-${polygons.join('\n')}
+<g stroke="#ffffff" stroke-opacity="0.3" stroke-width="0.6">
+${pieces.join('\n')}
 </g>
 <path class="de-border" d="${outlinePath}" fill="none" stroke="#b00000" stroke-width="1.5" stroke-linejoin="round"/>
 </svg>
 `;
 writeFileSync(new URL('../src/germany.svg', import.meta.url), svg);
-console.log(`Deutschland: ${tris.length} Dreiecke, markiert: ${polygons.filter((p) => p.includes('data-city')).length}`);
+console.log(`Deutschland: ${pieces.length} Stücke, markiert: ${pieces.filter((p) => p.includes('data-city')).length}`);
