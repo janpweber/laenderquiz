@@ -14,6 +14,7 @@ import {
 import germanySvg from './germany.svg?raw';
 import { contextMap } from './context-map';
 import { formatTime, startQuestionClock } from './timer';
+import { STANDARD, browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
 import { loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -184,12 +185,21 @@ function showSettings() {
   );
 }
 
+function recordText(entry: RecordEntry, endless: boolean): string {
+  const score = endless ? `${entry.score} richtig` : `${entry.score} von ${entry.total}`;
+  return `${score} · ${formatTime(entry.ms)}`;
+}
+
 function showStart() {
+  const best = loadRecords(browserStore())[recordKey(STANDARD)];
   app.replaceChildren(
     el('section', { className: 'screen start' }, [
       el('p', { className: 'kicker' }, ['Länderquiz']),
       el('h1', {}, ['Welches Land ist das?']),
       el('p', { className: 'lead' }, ['Erkennst du die Länder an ihrem Umriss?']),
+      ...(best
+        ? [el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord (10 Länder · Welt · Normal)']), recordText(best, false)])]
+        : []),
       map(),
       card('Los geht’s', 'play', newRound, 'primary'),
       card('Einstellungen', 'settings', showSettings, 'secondary', summary(settings, pool(settings).length)),
@@ -280,6 +290,14 @@ function finish(round: Round) {
 
 function showResult(round: Round) {
   const total = round.questions.length;
+  const endless = round.endless === true;
+  const update = submitResult(browserStore(), recordKey(settings), { score: round.score, total, ms: round.totalMs });
+  const record = update.isNew
+    ? el('p', { className: 'record new' }, [
+        el('span', {}, [update.previous ? 'Neuer Rekord!' : 'Dein erster Rekord']),
+        update.previous ? `Bisher: ${recordText(update.previous, endless)}` : summary(settings, pool(settings).length),
+      ])
+    : el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord']), recordText(update.best, endless)]);
   app.replaceChildren(
     el('section', { className: 'screen result' }, [
       el('p', { className: 'kicker' }, ['Ergebnis']),
@@ -287,6 +305,7 @@ function showResult(round: Round) {
       el('p', { className: 'score' }, [`${round.score} von ${total}`]),
       el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
       el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
+      record,
       map(),
       card('Neue Runde', 'again', newRound, 'primary', summary(settings, pool(settings).length)),
       card('Einstellungen', 'settings', showSettings, 'secondary'),
