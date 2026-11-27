@@ -1,8 +1,10 @@
 import countries from './countries.generated.json';
 import { answerQuestion, createRound, currentQuestion, isFinished, type Country, type Round } from './game';
+import germanySvg from './germany.svg?raw';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const ROUND_LENGTH = 10;
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -14,18 +16,58 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+// Kleine Strich-Icons im Kreis, wie auf havaslifeberlin.de
+const ICONS = {
+  play: 'M10 8 L17 12 L10 16 Z',
+  arrow: 'M7 12 H17 M13 8 L17 12 L13 16',
+  again: 'M17 9 A6 6 0 1 0 18 13 M17 5 V9 H13',
+};
+
+function icon(content: keyof typeof ICONS | string): HTMLSpanElement {
+  const wrap = el('span', { className: 'icon' });
+  if (content in ICONS) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', ICONS[content as keyof typeof ICONS]);
+    svg.append(path);
+    wrap.append(svg);
+  } else {
+    wrap.textContent = content;
+  }
+  return wrap;
+}
+
+function card(label: string, iconContent: string, onclick: () => void, className = ''): HTMLButtonElement {
+  return el('button', { className: `card ${className}`.trim(), onclick }, [
+    icon(iconContent),
+    el('span', { className: 'label' }, [label]),
+    el('span', { className: 'chevron', ariaHidden: 'true' }, ['›']),
+  ]);
+}
+
+// Deutschland aus Dreiecken, Berlin und Freiburg schwarz markiert
+// Inline eingebunden, damit die Animation bei jedem Anzeigen neu startet
+function map(): HTMLDivElement {
+  const wrap = el('div', { className: 'map' });
+  wrap.innerHTML = germanySvg;
+  return wrap;
+}
+
 function outline(country: Country): SVGSVGElement {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
+  const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 1000 1000');
   svg.setAttribute('class', 'outline');
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', 'Umriss eines Landes');
-  const path = document.createElementNS(ns, 'path');
+  const path = document.createElementNS(SVG_NS, 'path');
   path.setAttribute('d', country.path);
   svg.append(path);
   return svg;
 }
+
+const newRound = () => showQuestion(createRound(countries, { length: ROUND_LENGTH }));
 
 function showStart() {
   app.replaceChildren(
@@ -33,9 +75,8 @@ function showStart() {
       el('p', { className: 'kicker' }, ['Länderquiz']),
       el('h1', {}, ['Welches Land ist das?']),
       el('p', { className: 'lead' }, ['Erkennst du die Länder an ihrem Umriss?']),
-      el('button', { className: 'primary', onclick: () => showQuestion(createRound(countries, { length: ROUND_LENGTH })) }, [
-        'Los geht’s',
-      ]),
+      map(),
+      card('Los geht’s', 'play', newRound, 'primary'),
     ]),
   );
 }
@@ -44,10 +85,11 @@ function showQuestion(round: Round) {
   if (isFinished(round)) return showResult(round);
   const question = currentQuestion(round)!;
   const feedback = el('p', { className: 'feedback', ariaLive: 'polite' });
-  const next = el('button', { className: 'primary next', hidden: true }, ['Weiter']);
+  const next = card('Weiter', 'arrow', () => {}, 'primary next');
+  next.hidden = true;
 
-  const buttons = question.options.map((option) =>
-    el('button', { className: 'option', onclick: () => choose(option.code) }, [option.name]),
+  const buttons = question.options.map((option, i) =>
+    card(option.name, 'ABCD'[i], () => choose(option.code), 'option'),
   );
 
   function choose(code: string) {
@@ -60,7 +102,7 @@ function showQuestion(round: Round) {
     });
     feedback.textContent = result.correct ? 'Richtig!' : `Leider falsch. Das war ${result.correctCountry.name}.`;
     feedback.className = `feedback ${result.correct ? 'good' : 'bad'}`;
-    next.textContent = isFinished(result.round) ? 'Zum Ergebnis' : 'Weiter';
+    next.querySelector('.label')!.textContent = isFinished(result.round) ? 'Zum Ergebnis' : 'Weiter';
     next.onclick = () => showQuestion(result.round);
     next.hidden = false;
     next.focus();
@@ -88,9 +130,8 @@ function showResult(round: Round) {
       el('h1', {}, ['Geschafft!']),
       el('p', { className: 'score' }, [`${round.score} von ${total}`]),
       el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
-      el('button', { className: 'primary', onclick: () => showQuestion(createRound(countries, { length: ROUND_LENGTH })) }, [
-        'Neue Runde',
-      ]),
+      map(),
+      card('Neue Runde', 'again', newRound, 'primary'),
     ]),
   );
 }

@@ -1,15 +1,17 @@
-/* Farbwelt angelehnt an Havas: Rot, Schwarz, Weiß, dazu die 25°-Diagonale */
+/* Look angelehnt an havaslifeberlin.de: Havas-Rot, Schwarz, Weiß, helles Grau,
+   weiße Karten-Buttons mit rotem Kreis-Icon und Versalien */
 :root {
-  --red: #d01f39;
-  --red-dark: #a3162c;
-  --black: #111111;
+  --red: #e60000;
+  --red-dark: #b00000;
+  --black: #000000;
   --white: #ffffff;
-  --grey: #f2f2f2;
+  --grey: #e9e9e9;
+  --grey-dark: #8a8a8a;
   --good: #1f7a4d;
   --good-bg: #e3f4ea;
   font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
   color: var(--black);
-  background: var(--white);
+  background: var(--grey);
 }
 
 * { box-sizing: border-box; }
@@ -32,26 +34,24 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-/* Start und Ergebnis: schwarze Fläche mit roter Diagonale */
+/* Start und Ergebnis mit roter Diagonale unten, wie die roten Flächen der Website */
 .start, .result {
   position: relative;
   justify-content: center;
   text-align: center;
-  color: var(--white);
-  background: var(--black);
-  margin: -16px;
-  padding: 32px 24px;
   overflow: hidden;
+  margin: -16px;
+  padding: 24px 16px 40px;
 }
-.start::before, .result::before {
+.start::after, .result::after {
   content: '';
   position: absolute;
   left: -60%;
-  right: -20%;
-  top: 100%;
+  right: -60%;
+  top: 104%;
   height: 300%;
   background: var(--red);
   transform: rotate(-25deg);
@@ -61,27 +61,35 @@ body {
 .start > *, .result > * { position: relative; z-index: 1; }
 
 h1 {
-  font-size: 2.6rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 2.3rem;
+  line-height: 1.05;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
   margin: 0;
 }
-.lead { font-size: 1.1rem; margin: 0 0 20px; opacity: 0.85; }
-.score { font-size: 4rem; font-weight: 800; margin: 8px 0 0; color: var(--white); }
+.lead { font-size: 1.05rem; margin: 0; }
+.score { font-size: 4rem; font-weight: 900; margin: 4px 0 0; color: var(--red); }
 
 .kicker {
   margin: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 800;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--red);
 }
 
+.map {
+  height: min(36dvh, 300px);
+  margin: 6px auto 4px;
+}
+.map svg { height: 100%; width: auto; display: block; overflow: visible; }
+
 .status {
   display: flex;
   justify-content: space-between;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 0.8rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -90,10 +98,11 @@ h1 {
 
 .outline {
   width: 100%;
-  max-height: 42dvh;
-  aspect-ratio: 1;
-  background: var(--grey);
-  border-radius: 4px;
+  max-height: 34dvh;
+  aspect-ratio: 1.2;
+  background: var(--white);
+  border-radius: 14px;
+  padding: 8px;
 }
 .outline path {
   fill: var(--red);
@@ -102,51 +111,84 @@ h1 {
   stroke-linejoin: round;
 }
 
-.options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
+/* Karten-Buttons */
 button {
   font: inherit;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
   color: inherit;
   touch-action: manipulation;
 }
 
-.option {
-  min-height: 64px;
-  padding: 10px 8px;
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 16px 8px 12px;
   background: var(--white);
-  border: 2px solid var(--black);
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.2;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  text-align: left;
 }
-.option:disabled { cursor: default; opacity: 0.35; }
-.option.correct { background: var(--good-bg); border-color: var(--good); color: var(--good); opacity: 1; }
-.option.wrong { background: var(--black); border-color: var(--black); color: var(--white); opacity: 1; text-decoration: line-through; }
-
-.primary {
-  min-height: 56px;
-  padding: 0 24px;
-  background: var(--red);
-  color: var(--white);
-  font-size: 1rem;
+.card .icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--red);
+  border-radius: 50%;
+  color: var(--red);
   font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 1rem;
 }
-.start .primary, .result .primary { background: var(--white); color: var(--black); }
+.card .icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.card .label {
+  flex: 1;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+.card .chevron {
+  flex: none;
+  font-size: 1.8rem;
+  line-height: 1;
+  color: var(--grey-dark);
+}
 
-.feedback { margin: 0; min-height: 1.5em; text-align: center; font-weight: 800; font-size: 1.1rem; }
+.card.primary .icon { background: var(--red); color: var(--white); }
+.card.primary .icon svg path[d^='M10'] { fill: currentColor; }
+
+.options { display: flex; flex-direction: column; gap: 8px; }
+
+.card:disabled { cursor: default; opacity: 0.45; }
+.card.correct { border-color: var(--good); background: var(--good-bg); opacity: 1; }
+.card.correct .icon { border-color: var(--good); background: var(--good); color: var(--white); }
+.card.correct .label { color: var(--good); }
+.card.wrong { border-color: var(--black); background: var(--black); color: var(--white); opacity: 1; }
+.card.wrong .icon { border-color: var(--white); color: var(--white); }
+.card.wrong .label { text-decoration: line-through; }
+.card:disabled .chevron { visibility: hidden; }
+
+.feedback { margin: 0; min-height: 1.4em; text-align: center; font-weight: 800; font-size: 1.05rem; }
 .feedback.good { color: var(--good); }
 .feedback.bad { color: var(--black); }
 
 @media (hover: hover) {
-  .option:not(:disabled):hover { background: var(--grey); }
-  .primary:hover { filter: brightness(1.1); }
+  .card:not(:disabled):hover { border-color: var(--red); }
 }
+
+[hidden] { display: none !important; }
+
