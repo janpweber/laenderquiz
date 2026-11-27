@@ -14,6 +14,21 @@ npm run build:data # Umrisse aus data/countries.json neu erzeugen
 
 Jeder Push auf `main` wird getestet und automatisch auf GitHub Pages veröffentlicht.
 
+## Bestenliste (Supabase)
+
+Die Bestenliste liegt in Supabase und wird direkt über die REST-Schnittstelle angesprochen.
+
+1. Im Supabase-Dashboard **SQL Editor → New query** öffnen.
+2. Den Inhalt von [`supabase/schema.sql`](supabase/schema.sql) einfügen und **Run** klicken. Das Skript lässt sich gefahrlos mehrfach ausführen.
+3. Fertig. Einträge löschen geht im **Table Editor** (Tabelle `bestenliste`, Zeile markieren, Delete).
+
+Was die Datenbank selbst absichert, auch bei direkten API-Aufrufen:
+- Name getrimmt, 1 bis 20 Zeichen, Wortfilter (Sperrliste wie in `src/name.ts`)
+- 0 bis 10 richtige, Gesamtzeit zwischen 3 Sekunden und 30 Minuten
+- Öffentlich nur Lesen und Eintragen, kein Ändern oder Löschen
+
+Im Frontend steht nur der **Publishable Key** (`src/leaderboard.ts`), der öffentlich sein darf. Der Secret- bzw. Service-Role-Key gehört nie ins Repository. Für ein anderes Projekt lassen sich URL und Key zur Build-Zeit über `VITE_SUPABASE_URL` und `VITE_SUPABASE_KEY` setzen.
+
 ## Daten
 
 - **Umrisse:** [Natural Earth](https://www.naturalearthdata.com/) (Public Domain), bezogen über das Paket [world-atlas](https://github.com/topojson/world-atlas). 50m-Auflösung, für sehr kleine Länder 10m.

@@ -3,7 +3,7 @@
 PRD: docs/prd/laenderquiz.md
 Typ: HITL (braucht Jans Supabase-Projekt; Schema wird von Jan ausgeführt)
 Blockiert durch: 004, 005, Supabase-Zugang von Jan
-Status: offen
+Status: in Arbeit (Schema muss Jan einmal ausführen)
 
 ## Was
 Versioniertes SQL-Schema: Tabelle für Einträge, Constraints (Name 1–20 Zeichen, 0–10 richtige, plausible Gesamtzeit), serverseitiger Wortfilter, RLS nur Lesen und Einfügen. Nach einer Standardrunde (10, Welt, Normal) kann man sich mit Namen eintragen. Bestenliste-Bildschirm sortiert nach richtigen Antworten, dann Zeit. Nach anderen Runden ein Hinweis.

@@ -14,7 +14,9 @@ import {
 import germanySvg from './germany.svg?raw';
 import { contextMap } from './context-map';
 import { formatTime, startQuestionClock } from './timer';
-import { STANDARD, browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
+import { STANDARD, browserStore, isStandard, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
+import { LeaderboardError, fetchTop, plausible, submitEntry } from './leaderboard';
+import { NAME_MAX, checkName } from './name';
 import { loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -41,6 +43,7 @@ const ICONS = {
   settings: 'M5 7 H19 M5 12 H19 M5 17 H19 M9 5 V9 M15 10 V14 M8 15 V19',
   check: 'M6 12 L10 16 L18 8',
   stop: 'M8 8 H16 V16 H8 Z',
+  list: 'M9 7 H18 M9 12 H18 M9 17 H18 M5.5 7 H6 M5.5 12 H6 M5.5 17 H6',
 };
 
 function icon(content: keyof typeof ICONS | string): HTMLSpanElement {
@@ -203,8 +206,111 @@ function showStart() {
       map(),
       card('Los geht’s', 'play', newRound, 'primary'),
       card('Einstellungen', 'settings', showSettings, 'secondary', summary(settings, pool(settings).length)),
+      card('Bestenliste', 'list', () => showLeaderboard(), 'secondary'),
     ]),
   );
+}
+
+const NAME_KEY = 'laenderquiz:name';
+
+function rememberedName(): string {
+  try {
+    return browserStore()?.getItem(NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+// Eintrag in die Bestenliste, nur nach einer Standardrunde
+function leaderboardEntry(round: Round): HTMLElement {
+  if (round.endless || !isStandard(settings) || round.questions.length !== 10)
+    return el('p', { className: 'hint center' }, ['In die Bestenliste kommt nur die Standardrunde: 10 Länder · Welt · Normal.']);
+  if (!plausible(round.score, round.totalMs))
+    return el('p', { className: 'hint center' }, ['Diese Runde war zu schnell für die Bestenliste.']);
+
+  const input = el('input', {
+    type: 'text',
+    value: rememberedName(),
+    maxLength: NAME_MAX * 2,
+    placeholder: 'Dein Name',
+    autocomplete: 'nickname' as AutoFill,
+    ariaLabel: 'Name für die Bestenliste',
+  });
+  const message = el('p', { className: 'form-message', ariaLive: 'polite' });
+  const box = el('div', { className: 'entry' });
+  let sending = false;
+  const send = async () => {
+    if (sending) return;
+    const check = checkName(input.value);
+    if (!check.ok) {
+      message.textContent = check.message;
+      return;
+    }
+    sending = true;
+    submit.disabled = true;
+    message.textContent = 'Wird eingetragen …';
+    try {
+      const place = await submitEntry({ name: check.name, richtige: round.score, zeit_ms: round.totalMs });
+      try {
+        browserStore()?.setItem(NAME_KEY, check.name);
+      } catch {
+        // ohne Speicher eben nicht merken
+      }
+      box.replaceChildren(
+        el('p', { className: 'entry-done' }, [place > 0 ? `Eingetragen auf Platz ${place}!` : 'Eingetragen!']),
+        card('Bestenliste ansehen', 'list', () => showLeaderboard(check.name), 'secondary'),
+      );
+    } catch (e) {
+      message.textContent = e instanceof LeaderboardError ? e.message : 'Das hat leider nicht geklappt.';
+      submit.disabled = false;
+      sending = false;
+    }
+  };
+  const submit = card('Eintragen', 'check', send, 'secondary');
+  input.onkeydown = (ev) => {
+    if (ev.key === 'Enter') send();
+  };
+  box.append(el('label', { className: 'entry-label' }, ['In die Bestenliste eintragen', input]), message, submit);
+  return box;
+}
+
+async function showLeaderboard(highlight?: string) {
+  const list = el('ol', { className: 'board' });
+  const status = el('p', { className: 'lead center' }, ['Lädt …']);
+  app.replaceChildren(
+    el('section', { className: 'screen leaderboard' }, [
+      el('p', { className: 'kicker' }, ['Länderquiz']),
+      el('h1', {}, ['Bestenliste']),
+      el('p', { className: 'hint center' }, ['Standardrunde: 10 Länder · Welt · Normal']),
+      status,
+      list,
+      card('Neue Runde', 'again', newRound, 'primary', summary(settings, pool(settings).length)),
+      card('Zurück zum Start', 'arrow', showStart, 'secondary'),
+    ]),
+  );
+  try {
+    const entries = await fetchTop(20);
+    status.remove();
+    if (entries.length === 0) {
+      list.replaceWith(el('p', { className: 'lead center' }, ['Noch niemand eingetragen. Sei die oder der Erste!']));
+      return;
+    }
+    let marked = false;
+    list.append(
+      ...entries.map((entry, i) => {
+        const mine = !marked && entry.name === highlight;
+        if (mine) marked = true;
+        return el('li', { className: mine ? 'mine' : '' }, [
+          el('span', { className: 'rank' }, [`${i + 1}.`]),
+          el('span', { className: 'name' }, [entry.name]),
+          el('span', { className: 'points' }, [`${entry.richtige}/10`]),
+          el('span', { className: 'ms' }, [formatTime(entry.zeit_ms)]),
+        ]);
+      }),
+    );
+  } catch (e) {
+    status.textContent = e instanceof LeaderboardError ? e.message : 'Die Bestenliste konnte nicht geladen werden.';
+  }
 }
 
 function showQuestion(round: Round) {
@@ -298,6 +404,7 @@ function showResult(round: Round) {
         update.previous ? `Bisher: ${recordText(update.previous, endless)}` : summary(settings, pool(settings).length),
       ])
     : el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord']), recordText(update.best, endless)]);
+  const entry = leaderboardEntry(round);
   app.replaceChildren(
     el('section', { className: 'screen result' }, [
       el('p', { className: 'kicker' }, ['Ergebnis']),
@@ -306,7 +413,9 @@ function showResult(round: Round) {
       el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
       el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
       record,
-      map(),
+      entry,
+      // Auf kleinen Displays ist neben dem Eintragsfeld kein Platz für die Karte
+      ...(entry.classList.contains('entry') ? [] : [map()]),
       card('Neue Runde', 'again', newRound, 'primary', summary(settings, pool(settings).length)),
       card('Einstellungen', 'settings', showSettings, 'secondary'),
     ]),
