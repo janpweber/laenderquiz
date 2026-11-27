@@ -2,6 +2,22 @@ import schema from '../supabase/schema.sql?raw';
 import { describe, expect, it } from 'vitest';
 import { LeaderboardError, compareEntries, fetchTop, plausible, submitEntry, type Entry } from './leaderboard';
 import { BLOCKLIST, checkName } from './name';
+import { RANKED, rankedFor } from './ranked';
+
+describe('Ranglisten', () => {
+  it('Welt mit 10 und jeder Kontinent mit 5 Ländern, nur Normal', () => {
+    expect(rankedFor({ length: 10, continent: 'Welt', difficulty: 'normal' })?.modus).toBe('Welt');
+    expect(rankedFor({ length: 5, continent: 'Europa', difficulty: 'normal' })?.modus).toBe('Europa');
+    expect(rankedFor({ length: 10, continent: 'Europa', difficulty: 'normal' })).toBeUndefined();
+    expect(rankedFor({ length: 5, continent: 'Europa', difficulty: 'schwer' })).toBeUndefined();
+    expect(rankedFor({ length: 'endlos', continent: 'Welt', difficulty: 'normal' })).toBeUndefined();
+  });
+
+  it('die Datenbank kennt dieselben Modi und Längen', () => {
+    for (const mode of RANKED) expect(schema, mode.modus).toContain(`'${mode.modus}'`);
+    expect(schema).toContain("when 'Welt' then 10 else 5");
+  });
+});
 
 describe('Namensprüfung', () => {
   it('trimmt und erlaubt normale Namen', () => {
@@ -29,6 +45,7 @@ describe('Namensprüfung', () => {
 
 describe('Bestenliste', () => {
   const e = (name: string, richtige: number, zeit_ms: number, created_at = '2026-01-01'): Entry => ({
+    modus: 'Welt',
     name,
     richtige,
     zeit_ms,
@@ -47,22 +64,24 @@ describe('Bestenliste', () => {
   });
 
   it('lässt nur plausible Ergebnisse zu', () => {
-    expect(plausible(10, 25_000)).toBe(true);
-    expect(plausible(11, 25_000)).toBe(false);
-    expect(plausible(-1, 25_000)).toBe(false);
-    expect(plausible(10, 1_000)).toBe(false);
-    expect(plausible(10, 2 * 60 * 60 * 1000)).toBe(false);
+    expect(plausible(10, 25_000, 10)).toBe(true);
+    expect(plausible(11, 25_000, 10)).toBe(false);
+    expect(plausible(6, 25_000, 5)).toBe(false);
+    expect(plausible(5, 1_600, 5)).toBe(true);
+    expect(plausible(-1, 25_000, 10)).toBe(false);
+    expect(plausible(10, 1_000, 10)).toBe(false);
+    expect(plausible(10, 2 * 60 * 60 * 1000, 10)).toBe(false);
   });
 
   it('meldet fehlendes Netz freundlich', async () => {
     const offline = (() => Promise.reject(new TypeError('Failed to fetch'))) as typeof fetch;
-    await expect(fetchTop(20, offline)).rejects.toThrow(LeaderboardError);
-    await expect(fetchTop(20, offline)).rejects.toThrow(/Verbindung/);
+    await expect(fetchTop('Welt', 20, offline)).rejects.toThrow(LeaderboardError);
+    await expect(fetchTop('Welt', 20, offline)).rejects.toThrow(/Verbindung/);
   });
 
   it('meldet einen abgelehnten Eintrag verständlich', async () => {
     const rejected = (() => Promise.resolve(new Response('{}', { status: 400 }))) as typeof fetch;
-    await expect(submitEntry(e('Jan', 7, 30_000), rejected)).rejects.toThrow(/abgelehnt/);
+    await expect(submitEntry(e('Jan', 7, 30_000), 10, rejected)).rejects.toThrow(/abgelehnt/);
   });
 
   it('schickt unmögliche Werte gar nicht erst ab', async () => {
@@ -71,7 +90,7 @@ describe('Bestenliste', () => {
       called = true;
       return Promise.resolve(new Response(null, { status: 201 }));
     }) as typeof fetch;
-    await expect(submitEntry(e('Jan', 12, 30_000), spy)).rejects.toThrow(LeaderboardError);
+    await expect(submitEntry(e('Jan', 12, 30_000), 10, spy)).rejects.toThrow(LeaderboardError);
     expect(called).toBe(false);
   });
 
@@ -82,8 +101,9 @@ describe('Bestenliste', () => {
       if (init?.method === 'POST') return Promise.resolve(new Response(null, { status: 201 }));
       return Promise.resolve(new Response(null, { status: 200, headers: { 'content-range': '*/2' } }));
     }) as typeof fetch;
-    expect(await submitEntry(e('Jan', 7, 30_000), fake)).toBe(3);
-    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ name: 'Jan', richtige: 7, zeit_ms: 30_000 });
-    expect(calls[1].url).toContain('or=(richtige.gt.7,and(richtige.eq.7,zeit_ms.lt.30000))');
+    expect(await submitEntry({ ...e('Jan', 4, 30_000), modus: 'Südamerika' }, 5, fake)).toBe(3);
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ modus: 'Südamerika', name: 'Jan', richtige: 4, zeit_ms: 30_000 });
+    expect(calls[1].url).toContain('modus=eq.S%C3%BCdamerika');
+    expect(calls[1].url).toContain('or=(richtige.gt.4,and(richtige.eq.4,zeit_ms.lt.30000))');
   });
 });

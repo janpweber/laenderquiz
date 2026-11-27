@@ -336,3 +336,28 @@ button {
 .board .ms { color: var(--grey-dark); font-size: 0.9rem; min-width: 4.5em; text-align: right; }
 .board li.mine { background: var(--black); color: var(--white); }
 .board li.mine .ms { color: var(--grey); }
+
+/* Ranglisten-Runden hervorheben */
+.badge {
+  align-self: flex-start;
+  margin: 0;
+  padding: 4px 10px;
+  background: var(--red);
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ranked-hint {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-left: 4px solid var(--red);
+  background: var(--white);
+  font-weight: 800;
+}
+.leaderboard .chips { justify-content: center; }
+/* Ranglisten-Karte auf dem Start: schwarz, damit sie vor Grau und Rot heraussticht */
+.card.highlight { background: var(--black); color: var(--white); }
+.card.highlight small { color: var(--grey); }
+.card.highlight .chevron { color: var(--white); }

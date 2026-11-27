@@ -31,17 +31,33 @@ create table if not exists public.bestenliste (
   created_at timestamptz not null default now(),
   name text not null,
   richtige smallint not null,
-  zeit_ms integer not null,
-  -- Name getrimmt, 1 bis 20 Zeichen, nicht gesperrt
-  constraint name_laenge check (name = btrim(name) and char_length(name) between 1 and 20),
-  constraint name_erlaubt check (public.bestenliste_name_ok(name)),
-  -- Standardrunde hat 10 Fragen
-  constraint richtige_bereich check (richtige between 0 and 10),
-  -- mindestens 0,3 s je Frage, höchstens 30 Minuten
-  constraint zeit_bereich check (zeit_ms between 3000 and 1800000)
+  zeit_ms integer not null
 );
 
-create index if not exists bestenliste_rang on public.bestenliste (richtige desc, zeit_ms asc, created_at asc);
+-- Ranglisten: Welt mit 10 Ländern, jeder Kontinent mit 5 (Modus „Normal“).
+-- Erweitert auch eine ältere Tabelle ohne diese Spalte.
+alter table public.bestenliste add column if not exists modus text not null default 'Welt';
+
+alter table public.bestenliste drop constraint if exists name_laenge;
+alter table public.bestenliste drop constraint if exists name_erlaubt;
+alter table public.bestenliste drop constraint if exists modus_erlaubt;
+alter table public.bestenliste drop constraint if exists richtige_bereich;
+alter table public.bestenliste drop constraint if exists zeit_bereich;
+
+alter table public.bestenliste
+  -- Name getrimmt, 1 bis 20 Zeichen, nicht gesperrt
+  add constraint name_laenge check (name = btrim(name) and char_length(name) between 1 and 20),
+  add constraint name_erlaubt check (public.bestenliste_name_ok(name)),
+  add constraint modus_erlaubt check (modus in ('Welt', 'Afrika', 'Asien', 'Europa', 'Nordamerika', 'Südamerika', 'Ozeanien')),
+  -- höchstens so viele richtige wie Fragen
+  add constraint richtige_bereich check (richtige between 0 and (case modus when 'Welt' then 10 else 5 end)),
+  -- mindestens 0,3 s je Frage, höchstens 30 Minuten
+  add constraint zeit_bereich check (
+    zeit_ms between 300 * (case modus when 'Welt' then 10 else 5 end) and 1800000
+  );
+
+drop index if exists public.bestenliste_rang;
+create index if not exists bestenliste_modus_rang on public.bestenliste (modus, richtige desc, zeit_ms asc, created_at asc);
 
 -- Row Level Security: öffentlich nur lesen und eintragen.
 -- Ändern und Löschen geht nur im Dashboard (Table Editor).

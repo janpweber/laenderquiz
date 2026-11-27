@@ -24,7 +24,7 @@ Die Bestenliste liegt in Supabase und wird direkt über die REST-Schnittstelle a
 
 Was die Datenbank selbst absichert, auch bei direkten API-Aufrufen:
 - Name getrimmt, 1 bis 20 Zeichen, Wortfilter (Sperrliste wie in `src/name.ts`)
-- 0 bis 10 richtige, Gesamtzeit zwischen 3 Sekunden und 30 Minuten
+- Modus Welt (10 Fragen) oder ein Kontinent (5 Fragen); höchstens so viele richtige wie Fragen, Gesamtzeit zwischen 0,3 s je Frage und 30 Minuten
 - Öffentlich nur Lesen und Eintragen, kein Ändern oder Löschen
 
 Im Frontend steht nur der **Publishable Key** (`src/leaderboard.ts`), der öffentlich sein darf. Der Secret- bzw. Service-Role-Key gehört nie ins Repository. Für ein anderes Projekt lassen sich URL und Key zur Build-Zeit über `VITE_SUPABASE_URL` und `VITE_SUPABASE_KEY` setzen.

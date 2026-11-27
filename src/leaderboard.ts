@@ -7,11 +7,12 @@ export const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY ?? 'sb_publishable
 const TABLE = `${SUPABASE_URL}/rest/v1/bestenliste`;
 const TIMEOUT_MS = 8000;
 
-// Grenzen wie in der Datenbank: 10 Fragen, mindestens 0,3 s je Frage, höchstens 30 Minuten
-export const MIN_MS = 3000;
+// Grenzen wie in der Datenbank: mindestens 0,3 s je Frage, höchstens 30 Minuten
+export const MIN_MS_PER_QUESTION = 300;
 export const MAX_MS = 30 * 60 * 1000;
 
 export interface Entry {
+  modus: string;
   name: string;
   richtige: number;
   zeit_ms: number;
@@ -23,8 +24,14 @@ export function compareEntries(a: Entry, b: Entry): number {
   return b.richtige - a.richtige || a.zeit_ms - b.zeit_ms || (a.created_at ?? '').localeCompare(b.created_at ?? '');
 }
 
-export function plausible(richtige: number, ms: number): boolean {
-  return Number.isInteger(richtige) && richtige >= 0 && richtige <= 10 && ms >= MIN_MS && ms <= MAX_MS;
+export function plausible(richtige: number, ms: number, fragen: number): boolean {
+  return (
+    Number.isInteger(richtige) &&
+    richtige >= 0 &&
+    richtige <= fragen &&
+    ms >= MIN_MS_PER_QUESTION * fragen &&
+    ms <= MAX_MS
+  );
 }
 
 export class LeaderboardError extends Error {}
@@ -55,24 +62,26 @@ async function request(fetchFn: Fetch, url: string, init: RequestInit = {}): Pro
   }
 }
 
-export async function fetchTop(limit = 20, fetchFn: Fetch = fetch): Promise<Entry[]> {
-  const url = `${TABLE}?select=name,richtige,zeit_ms,created_at&order=richtige.desc,zeit_ms.asc,created_at.asc&limit=${limit}`;
+const eq = (modus: string) => `modus=eq.${encodeURIComponent(modus)}`;
+
+export async function fetchTop(modus: string, limit = 20, fetchFn: Fetch = fetch): Promise<Entry[]> {
+  const url = `${TABLE}?select=modus,name,richtige,zeit_ms,created_at&${eq(modus)}&order=richtige.desc,zeit_ms.asc,created_at.asc&limit=${limit}`;
   const entries = (await (await request(fetchFn, url)).json()) as Entry[];
   return [...entries].sort(compareEntries);
 }
 
 // Einträgt das Ergebnis und gibt den Platz zurück (1 = bester)
-export async function submitEntry(entry: Entry, fetchFn: Fetch = fetch): Promise<number> {
-  if (!plausible(entry.richtige, entry.zeit_ms)) throw new LeaderboardError('Dieses Ergebnis kann nicht eingetragen werden.');
+export async function submitEntry(entry: Entry, fragen: number, fetchFn: Fetch = fetch): Promise<number> {
+  if (!plausible(entry.richtige, entry.zeit_ms, fragen)) throw new LeaderboardError('Dieses Ergebnis kann nicht eingetragen werden.');
   await request(fetchFn, TABLE, {
     method: 'POST',
     headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({ name: entry.name, richtige: entry.richtige, zeit_ms: Math.round(entry.zeit_ms) }),
+    body: JSON.stringify({ modus: entry.modus, name: entry.name, richtige: entry.richtige, zeit_ms: Math.round(entry.zeit_ms) }),
   });
   // Platz = Zahl der besseren Einträge + 1
   const better = `or=(richtige.gt.${entry.richtige},and(richtige.eq.${entry.richtige},zeit_ms.lt.${Math.round(entry.zeit_ms)}))`;
   try {
-    const response = await request(fetchFn, `${TABLE}?select=name&${better}`, {
+    const response = await request(fetchFn, `${TABLE}?select=name&${eq(entry.modus)}&${better}`, {
       method: 'HEAD',
       headers: { Prefer: 'count=exact' },
     });

@@ -8,7 +8,7 @@ Es gibt noch kein Repository und keinen Code. Dieses Dokument ist der Ausgangspu
 ## Lösung
 Eine statische Web-App auf Deutsch, gebaut fürs Handy und auch am Laptop gut spielbar. Auf dem Startbildschirm stellt man die Runde ein: Länge, Kontinent und Schwierigkeit. Im Spiel sieht man den Umriss eines Landes und wählt aus vier Antworten. Die falschen Antworten stammen bevorzugt aus derselben Region, damit es nicht zu leicht wird. Nach jedem Tipp gibt es sofort eine Rückmeldung, ob die Antwort richtig war, und welches Land es war.
 
-Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für eine neue Runde. Wer die Standardrunde gespielt hat (10 Länder, aus aller Welt, normal), kann sich freiwillig mit einem Namen in die Online-Bestenliste eintragen. Die Bestenliste liegt in Supabase. Das Spiel selbst liegt auf GitHub Pages.
+Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für eine neue Runde. Wer eine Ranglisten-Runde gespielt hat (Welt mit 10 Ländern oder ein Kontinent mit 5, jeweils normal), kann sich freiwillig mit einem Namen in die Online-Bestenliste eintragen. Die Bestenliste liegt in Supabase. Das Spiel selbst liegt auf GitHub Pages.
 
 ## User Stories
 
@@ -31,9 +31,9 @@ Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für 
 
 ### Rekord und Bestenliste
 14. Als Spielerin will ich meinen persönlichen Rekord sehen, der auf meinem Gerät gespeichert bleibt, damit ich mich selbst übertreffen kann.
-15. Als Spielerin will ich nach einer Standardrunde freiwillig einen Namen eingeben und mich in die Bestenliste eintragen, damit ich mich mit anderen vergleichen kann.
+15. Als Spielerin will ich nach einer Ranglisten-Runde freiwillig einen Namen eingeben und mich in die Bestenliste eintragen, damit ich mich mit anderen vergleichen kann.
 16. Als Spielerin will ich die Bestenliste ansehen, sortiert nach richtigen Antworten und bei Gleichstand nach der schnelleren Zeit.
-17. Als Spielerin will ich nach anderen Runden einen Hinweis sehen, dass nur die Standardrunde in die Bestenliste kommt, damit ich nicht verwirrt bin.
+17. Als Spielerin will ich nach anderen Runden einen Hinweis sehen, dass nur Ranglisten-Runden in die Bestenliste kommen, damit ich nicht verwirrt bin.
 18. Als Spielerin will ich eine verständliche Meldung, wenn mein Name zu lang ist oder abgelehnt wird, damit ich einen anderen wählen kann.
 19. Als Spielerin will ich weiterspielen können, wenn die Bestenliste nicht erreichbar ist (kein Netz, Supabase down). Das Spiel bleibt nutzbar, nur der Eintrag schlägt mit einer freundlichen Meldung fehl.
 
@@ -54,24 +54,25 @@ Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für 
 - **Umriss-Darstellung:** Zeichnet ein einzelnes Land als SVG, auf den verfügbaren Platz skaliert und zentriert. Länder mit verstreuten Teilen (z. B. Inselgruppen, Überseegebiete) werden auf das Kerngebiet beschränkt, damit der Umriss nicht winzig wird.
 - **Rundenlogik (reine Funktionen, ohne UI):** Erzeugt aus den Einstellungen (Länge, Kontinent, Schwierigkeit) die Länderfolge ohne Wiederholung, wählt pro Frage drei Ablenker bevorzugt aus derselben Teilregion, dann Kontinent, dann weltweit, mischt die vier Antworten, wertet Antworten aus und führt Punktzahl und Gesamtzeit. Der Zufall ist injizierbar, damit Tests reproduzierbar sind.
 - **Timer:** 10 Sekunden pro Frage, wenn eingeschaltet. Ablauf zählt als falsche Antwort. Die Antwortzeit wird pro Frage gemessen und für die Bestenliste aufsummiert.
-- **Lokaler Rekord:** Gespeichert im Browser (localStorage), getrennt nach Einstellungs-Kombination, damit eine 1-Länder-Runde nicht den 10er-Rekord schlägt. Mindestens der Rekord der Standardrunde wird prominent gezeigt.
+- **Lokaler Rekord:** Gespeichert im Browser (localStorage), getrennt nach Einstellungs-Kombination, damit eine 1-Länder-Runde nicht den 10er-Rekord schlägt. Mindestens der Rekord der Welt-Rangliste wird prominent gezeigt.
 - **Bestenliste-Client:** Lesen der Top-Einträge und Eintragen eines Ergebnisses. Fehler werden abgefangen und freundlich angezeigt.
-- **Hinweis:** Nach dem MVP: pro Frage ein Hinweis, der eine Flagge einblendet (gesuchtes Land oder alle 4 Antworten, noch offen). Flaggen als SVG aus einer frei lizenzierten Quelle (z. B. flag-icons, MIT). In der Standardrunde für die Bestenliste ausgeblendet.
+- **Hinweis:** Nach dem MVP: pro Frage ein Hinweis, der eine Flagge einblendet (gesuchtes Land oder alle 4 Antworten, noch offen). Flaggen als SVG aus einer frei lizenzierten Quelle (z. B. flag-icons, MIT). In Ranglisten-Runden ausgeblendet.
 - **Bildschirme:** Start (Einstellungen), Spiel, Ergebnis (mit optionalem Eintrag), Bestenliste.
 
 ### Spielregeln im Detail
 - **Rundenlänge:** 10 (Standard), 20, endlos oder freie Zahl von 1 bis N, wobei N die Zahl der Länder nach Kontinent- und Schwierigkeitsfilter ist. Endlos läuft, bis die Spielerin beendet oder alle Länder des Filters gespielt sind.
 - **Schwierigkeit:** „Normal“ schließt winzige Inselstaaten aus, „Schwer“ nimmt alle Länder des Filters. Welche Staaten als winzig gelten, wird in den Länderdaten fest markiert (Richtwert: kleine Fläche und reine Inselstaaten, etwa Nauru, Tuvalu, Malediven, Seychellen, Karibik-Kleinstaaten). Die Liste wird bei der Datenaufbereitung einmal festgelegt und im Repository dokumentiert.
 - **Ablenker** kommen immer aus der Menge der erlaubten Länder der aktuellen Runde, damit in „Normal“ keine Inselstaaten als Antworten auftauchen.
-- **Standardrunde für die Bestenliste:** genau 10 Länder, aus aller Welt, Normal. Nur nach einer solchen Runde wird der Eintrag angeboten.
+- **Ranglisten-Runden (geändert am 27.11.2026):** Welt mit 10 Ländern und jeder Kontinent mit 5 Ländern, immer Normal. Jede hat eine eigene Bestenliste. Nur nach einer solchen Runde wird der Eintrag angeboten. Auf dem Start stehen die Wege „Rangliste“ (hervorgehoben) und „Freies Spiel“.
 - **Wertung:** zuerst Anzahl richtiger Antworten (absteigend), dann Gesamtzeit (aufsteigend).
 
 ### Datenmodell (Supabase)
 Tabelle für Bestenlisten-Einträge mit:
 - ID, Zeitpunkt (vom Server gesetzt)
 - Name (Text, getrimmt, 1 bis 20 Zeichen)
-- Richtige Antworten (Ganzzahl, 0 bis 10)
-- Gesamtzeit in Millisekunden (Ganzzahl, mit Unter- und Obergrenze: Obergrenze 10 × 10 s, Untergrenze ein plausibles Minimum pro Frage, z. B. 300 ms)
+- Modus (Welt oder ein Kontinent)
+- Richtige Antworten (Ganzzahl, 0 bis 10 für Welt, 0 bis 5 für Kontinente)
+- Gesamtzeit in Millisekunden (Ganzzahl, mit Unter- und Obergrenze: Obergrenze 30 Minuten, Untergrenze 300 ms pro Frage)
 
 Absicherung:
 - Row Level Security: öffentlich nur Lesen und Einfügen, kein Ändern oder Löschen. Löschen macht Jan im Dashboard.
@@ -89,7 +90,7 @@ Supabase-URL und Anon-Key werden zur Build-Zeit eingesetzt. Der Anon-Key ist öf
 - **Datentests:** genau 193 Länder, jedes mit deutschem Namen, Kontinent, Teilregion und gültiger Geometrie; deutsche Namen sind eindeutig.
 - **Namensprüfung:** Länge, Trimmen, Wortfilter mit ein paar Positiv- und Negativbeispielen.
 - **Datenbank-Regeln:** einmal manuell gegen Supabase prüfen, dass unmögliche Werte und Änderungen/Löschungen über den Anon-Key abgelehnt werden.
-- **Ende-zu-Ende (leichtgewichtig):** ein Browser-Test mit Handy-Viewport, der eine Standardrunde durchspielt und den Ergebnisbildschirm erreicht. Supabase wird dabei gemockt.
+- **Ende-zu-Ende (leichtgewichtig):** ein Browser-Test mit Handy-Viewport, der eine Ranglisten-Runde durchspielt und den Ergebnisbildschirm erreicht. Supabase wird dabei gemockt.
 - **Manueller Abnahmetest:** Link per WhatsApp an sich selbst schicken und auf einem echten iPhone und Android-Handy im In-App-Browser und im normalen Browser spielen.
 
 ## Akzeptanzkriterien
@@ -103,7 +104,7 @@ Supabase-URL und Anon-Key werden zur Build-Zeit eingesetzt. Der Anon-Key ist öf
 - [x] Kein Zeitlimit; die Antwortzeit wird gemessen und am Ende als Gesamtzeit angezeigt.
 - [ ] Am Ende werden Punktzahl und persönlicher Rekord angezeigt; „Neue Runde“ startet mit denselben Einstellungen.
 - [ ] Der persönliche Rekord bleibt nach Neuladen der Seite erhalten.
-- [ ] Nur nach einer Standardrunde (10, Welt, Normal) wird der Bestenlisten-Eintrag angeboten.
+- [ ] Nur nach einer Ranglisten-Runde wird der Bestenlisten-Eintrag angeboten.
 - [ ] Die Bestenliste sortiert nach richtigen Antworten, dann nach kürzerer Zeit.
 - [ ] Zu lange oder gefilterte Namen und unmögliche Ergebnisse werden abgelehnt, auch bei direktem API-Aufruf.
 - [ ] Über den öffentlichen Key können Einträge weder geändert noch gelöscht werden; Jan kann sie im Dashboard löschen.
@@ -118,7 +119,7 @@ Supabase-URL und Anon-Key werden zur Build-Zeit eingesetzt. Der Anon-Key ist öf
 - Werbung, Analytics, Tracking
 - Andere Spielmodi (Hauptstädte, Flaggen als eigener Quiz-Modus, Karte anklicken, Freitext-Eingabe)
 - Nicht-UN-Gebiete (z. B. Kosovo, Taiwan, Westsahara, Überseegebiete)
-- Bestenlisten für andere Einstellungen als die Standardrunde
+- Bestenlisten für andere Einstellungen als die Ranglisten-Runden (z. B. Schwer)
 - Moderations-Oberfläche in der App (Löschen nur im Supabase-Dashboard)
 - Vollständiger Schutz vor plausibel gefälschten Ergebnissen
 - Installation als App (PWA) und Offline-Modus
@@ -131,4 +132,4 @@ Supabase-URL und Anon-Key werden zur Build-Zeit eingesetzt. Der Anon-Key ist öf
 - Endlosmodus endet, wenn die Spielerin aufhört oder alle Länder des Filters gespielt sind.
 - Namenslänge maximal 20 Zeichen.
 - Der lokale Rekord wird je Einstellungs-Kombination geführt.
-- Der Hinweis ist in der Standardrunde für die Bestenliste ausgeblendet.
+- Der Hinweis ist in Ranglisten-Runden ausgeblendet.

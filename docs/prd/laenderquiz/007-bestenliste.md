@@ -6,10 +6,10 @@ Blockiert durch: 004, 005, Supabase-Zugang von Jan
 Status: in Arbeit (Schema muss Jan einmal ausführen)
 
 ## Was
-Versioniertes SQL-Schema: Tabelle für Einträge, Constraints (Name 1–20 Zeichen, 0–10 richtige, plausible Gesamtzeit), serverseitiger Wortfilter, RLS nur Lesen und Einfügen. Nach einer Standardrunde (10, Welt, Normal) kann man sich mit Namen eintragen. Bestenliste-Bildschirm sortiert nach richtigen Antworten, dann Zeit. Nach anderen Runden ein Hinweis.
+Versioniertes SQL-Schema: Tabelle für Einträge, Constraints (Name 1–20 Zeichen, 0–10 richtige, plausible Gesamtzeit), serverseitiger Wortfilter, RLS nur Lesen und Einfügen. Nach einer Ranglisten-Runde (Welt 10 oder Kontinent 5, Normal) kann man sich mit Namen eintragen. Bestenliste-Bildschirm mit Reitern je Rangliste sortiert nach richtigen Antworten, dann Zeit. Nach anderen Runden ein Hinweis.
 
 ## Akzeptanzkriterien
-- [ ] Eintrag nur nach Standardrunde angeboten
+- [ ] Eintrag nur nach Ranglisten-Runde angeboten
 - [ ] Sortierung korrekt
 - [ ] Zu lange/gefilterte Namen und unmögliche Werte werden auch bei direktem API-Aufruf abgelehnt (manuell geprüft)
 - [ ] Ändern/Löschen über den Anon-Key nicht möglich, Löschen im Dashboard möglich
