@@ -13,6 +13,7 @@ import {
 } from './game';
 import germanySvg from './germany.svg?raw';
 import { contextMap } from './context-map';
+import { formatTime, startQuestionClock } from './timer';
 import { loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -232,8 +233,11 @@ function showQuestion(round: Round) {
   // Stand nach der Antwort, damit „Runde beenden“ die aktuelle Antwort mitzählt
   let latest = round;
 
+  // Antwortzeit: läuft ab Anzeige der Frage bis zur Antwort, die Rückmeldung zählt nicht
+  const clock = startQuestionClock(() => performance.now());
+
   function choose(code: string) {
-    const result = answerQuestion(round, code);
+    const result = answerQuestion(round, code, clock.elapsed());
     latest = result.round;
     buttons.forEach((button, i) => {
       button.disabled = true;
@@ -282,6 +286,7 @@ function showResult(round: Round) {
       el('h1', {}, ['Geschafft!']),
       el('p', { className: 'score' }, [`${round.score} von ${total}`]),
       el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
+      el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
       map(),
       card('Neue Runde', 'again', newRound, 'primary', summary(settings, pool(settings).length)),
       card('Einstellungen', 'settings', showSettings, 'secondary'),

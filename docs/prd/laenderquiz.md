@@ -6,9 +6,9 @@ Jans Chefin hat sich ein Spiel gewünscht, bei dem man Länder an ihrem Umriss e
 Es gibt noch kein Repository und keinen Code. Dieses Dokument ist der Ausgangspunkt für die Umsetzung.
 
 ## Lösung
-Eine statische Web-App auf Deutsch, gebaut fürs Handy und auch am Laptop gut spielbar. Auf dem Startbildschirm stellt man die Runde ein: Länge, Kontinent, Schwierigkeit und Zeitlimit. Im Spiel sieht man den Umriss eines Landes und wählt aus vier Antworten. Die falschen Antworten stammen bevorzugt aus derselben Region, damit es nicht zu leicht wird. Nach jedem Tipp gibt es sofort eine Rückmeldung, ob die Antwort richtig war, und welches Land es war.
+Eine statische Web-App auf Deutsch, gebaut fürs Handy und auch am Laptop gut spielbar. Auf dem Startbildschirm stellt man die Runde ein: Länge, Kontinent und Schwierigkeit. Im Spiel sieht man den Umriss eines Landes und wählt aus vier Antworten. Die falschen Antworten stammen bevorzugt aus derselben Region, damit es nicht zu leicht wird. Nach jedem Tipp gibt es sofort eine Rückmeldung, ob die Antwort richtig war, und welches Land es war.
 
-Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für eine neue Runde. Wer die Standardrunde gespielt hat (10 Länder, aus aller Welt, normal, mit Zeitlimit), kann sich freiwillig mit einem Namen in die Online-Bestenliste eintragen. Die Bestenliste liegt in Supabase. Das Spiel selbst liegt auf GitHub Pages.
+Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für eine neue Runde. Wer die Standardrunde gespielt hat (10 Länder, aus aller Welt, normal), kann sich freiwillig mit einem Namen in die Online-Bestenliste eintragen. Die Bestenliste liegt in Supabase. Das Spiel selbst liegt auf GitHub Pages.
 
 ## User Stories
 
@@ -18,11 +18,11 @@ Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für 
 3. Als Spielerin will ich bei einer eigenen Zahl nur Werte von 1 bis zur Zahl der aktuell verfügbaren Länder eingeben können, damit die Runde nicht ins Leere läuft.
 4. Als Spielerin will ich nach Kontinent filtern, damit ich gezielt eine Region üben kann.
 5. Als Spielerin will ich zwischen „Normal“ und „Schwer“ wählen, wobei winzige Inselstaaten nur in „Schwer“ vorkommen, damit normale Runden fair bleiben.
-6. Als Spielerin will ich ein Zeitlimit einschalten können (standardmäßig aus), damit ich mich herausfordern kann, wenn ich will.
+6. ~~Zeitlimit~~ (gestrichen am 27.11.2026: Jan braucht kein Zeitlimit. Die Antwortzeit wird nur gemessen.)
 7. Als Spielerin will ich einen gut erkennbaren Umriss sehen, der den Bildschirm sinnvoll füllt, damit auch kleine Länder erkennbar sind.
 8. Als Spielerin will ich aus vier großen, gut tippbaren Antwortknöpfen wählen, damit es mit dem Daumen bequem geht.
 9. Als Spielerin will ich nach jedem Tipp sofort sehen, ob ich richtig lag, und bei Fehlern die richtige Antwort, damit ich dazulerne.
-10. Als Spielerin will ich bei eingeschaltetem Zeitlimit einen sichtbaren 10-Sekunden-Countdown, und bei Ablauf zählt die Frage als falsch, damit klar ist, was passiert.
+10. Als Spielerin will ich am Ende meine Gesamtzeit sehen, damit bei gleicher Punktzahl die schnellere Runde vorne liegt. (Countdown gestrichen am 27.11.2026.)
 11. Als Spielerin will ich am Ende meine Punktzahl (richtig von gesamt) sehen und mit einem Tipp eine neue Runde mit denselben Einstellungen starten.
 12. Als Spielerin will ich im Endlosmodus jederzeit aufhören können und dann meine Auswertung sehen.
 13. Als Spielerin will ich, dass sich innerhalb einer Runde kein Land wiederholt, solange noch ungespielte Länder übrig sind.
@@ -63,7 +63,7 @@ Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für 
 - **Rundenlänge:** 10 (Standard), 20, endlos oder freie Zahl von 1 bis N, wobei N die Zahl der Länder nach Kontinent- und Schwierigkeitsfilter ist. Endlos läuft, bis die Spielerin beendet oder alle Länder des Filters gespielt sind.
 - **Schwierigkeit:** „Normal“ schließt winzige Inselstaaten aus, „Schwer“ nimmt alle Länder des Filters. Welche Staaten als winzig gelten, wird in den Länderdaten fest markiert (Richtwert: kleine Fläche und reine Inselstaaten, etwa Nauru, Tuvalu, Malediven, Seychellen, Karibik-Kleinstaaten). Die Liste wird bei der Datenaufbereitung einmal festgelegt und im Repository dokumentiert.
 - **Ablenker** kommen immer aus der Menge der erlaubten Länder der aktuellen Runde, damit in „Normal“ keine Inselstaaten als Antworten auftauchen.
-- **Standardrunde für die Bestenliste:** genau 10 Länder, aus aller Welt, Normal, Zeitlimit an. Nur nach einer solchen Runde wird der Eintrag angeboten.
+- **Standardrunde für die Bestenliste:** genau 10 Länder, aus aller Welt, Normal. Nur nach einer solchen Runde wird der Eintrag angeboten.
 - **Wertung:** zuerst Anzahl richtiger Antworten (absteigend), dann Gesamtzeit (aufsteigend).
 
 ### Datenmodell (Supabase)
@@ -100,10 +100,10 @@ Supabase-URL und Anon-Key werden zur Build-Zeit eingesetzt. Der Anon-Key ist öf
 - [ ] Alle 193 UN-Staaten sind mit erkennbarem Umriss und korrektem deutschem Namen enthalten.
 - [ ] Jede Frage zeigt vier verschiedene Antworten, eine davon richtig; Ablenker kommen bevorzugt aus derselben Region.
 - [ ] Nach jedem Tipp erscheint sofort eine Rückmeldung mit der richtigen Antwort.
-- [ ] Das Zeitlimit ist standardmäßig aus; eingeschaltet läuft ein sichtbarer 10-Sekunden-Countdown, Ablauf zählt als falsch.
+- [x] Kein Zeitlimit; die Antwortzeit wird gemessen und am Ende als Gesamtzeit angezeigt.
 - [ ] Am Ende werden Punktzahl und persönlicher Rekord angezeigt; „Neue Runde“ startet mit denselben Einstellungen.
 - [ ] Der persönliche Rekord bleibt nach Neuladen der Seite erhalten.
-- [ ] Nur nach einer Standardrunde (10, Welt, Normal, mit Zeitlimit) wird der Bestenlisten-Eintrag angeboten.
+- [ ] Nur nach einer Standardrunde (10, Welt, Normal) wird der Bestenlisten-Eintrag angeboten.
 - [ ] Die Bestenliste sortiert nach richtigen Antworten, dann nach kürzerer Zeit.
 - [ ] Zu lange oder gefilterte Namen und unmögliche Ergebnisse werden abgelehnt, auch bei direktem API-Aufruf.
 - [ ] Über den öffentlichen Key können Einträge weder geändert noch gelöscht werden; Jan kann sie im Dashboard löschen.

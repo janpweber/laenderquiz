@@ -20,6 +20,8 @@ export interface Round {
   index: number;
   score: number;
   endless?: boolean;
+  // Summe der Antwortzeiten in Millisekunden (ohne Rückmeldungs-Pause)
+  totalMs: number;
 }
 
 export type RoundLength = number | 'endlos';
@@ -91,7 +93,7 @@ export function createRound(countries: Country[], settings: RoundSettings, rng: 
     const distractors = pickDistractors(country, countries, rng);
     return { country, options: shuffle([country, ...distractors], rng) };
   });
-  return { questions, index: 0, score: 0, endless };
+  return { questions, index: 0, score: 0, endless, totalMs: 0 };
 }
 
 // Endlosmodus: Runde nach der aktuellen Frage beenden; gewertet wird, was beantwortet ist
@@ -107,13 +109,18 @@ export function isFinished(round: Round): boolean {
   return round.index >= round.questions.length;
 }
 
-export function answerQuestion(round: Round, code: string): AnswerResult {
+export function answerQuestion(round: Round, code: string, elapsedMs = 0): AnswerResult {
   const question = currentQuestion(round);
   if (!question) throw new Error('Runde ist bereits beendet');
   const correct = code === question.country.code;
   return {
     correct,
     correctCountry: question.country,
-    round: { ...round, index: round.index + 1, score: round.score + (correct ? 1 : 0) },
+    round: {
+      ...round,
+      index: round.index + 1,
+      score: round.score + (correct ? 1 : 0),
+      totalMs: round.totalMs + Math.max(0, elapsedMs),
+    },
   };
 }
