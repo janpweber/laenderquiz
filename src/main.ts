@@ -14,7 +14,10 @@ import {
 import germanySvg from './germany.svg?raw';
 import { contextMap } from './context-map';
 import { formatTime, startQuestionClock } from './timer';
-import { STANDARD, browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
+import { browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
+import { RANKED, rankedFor, rankedLabel, rankedSettings, type RankedMode } from './ranked';
+import { LeaderboardError, fetchTop, plausible, submitEntry } from './leaderboard';
+import { NAME_MAX, checkName } from './name';
 import { loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -41,6 +44,8 @@ const ICONS = {
   settings: 'M5 7 H19 M5 12 H19 M5 17 H19 M9 5 V9 M15 10 V14 M8 15 V19',
   check: 'M6 12 L10 16 L18 8',
   stop: 'M8 8 H16 V16 H8 Z',
+  trophy: 'M8 5 H16 V10 A4 4 0 0 1 8 10 Z M8 7 H5 V8 A3 3 0 0 0 8 11 M16 7 H19 V8 A3 3 0 0 1 16 11 M12 14 V17 M9 19 H15',
+  list: 'M9 7 H18 M9 12 H18 M9 17 H18 M5.5 7 H6 M5.5 12 H6 M5.5 17 H6',
 };
 
 function icon(content: keyof typeof ICONS | string): HTMLSpanElement {
@@ -105,7 +110,13 @@ function outline(country: Country): SVGSVGElement {
   return svg;
 }
 
-const newRound = () => showQuestion(createRound(pool(settings), { length: settings.length }));
+// Einstellungen der laufenden Runde (Rangliste oder freies Spiel)
+let active: Settings = settings;
+function startRound(s: Settings) {
+  active = s;
+  showQuestion(createRound(pool(s), { length: s.length }));
+}
+const newRound = () => startRound(active);
 
 function showSettings() {
   const available = pool(settings).length;
@@ -144,7 +155,7 @@ function showSettings() {
 
   app.replaceChildren(
     el('section', { className: 'screen settings' }, [
-      el('p', { className: 'kicker' }, ['Länderquiz']),
+      el('p', { className: 'kicker' }, ['Freies Spiel']),
       el('h1', {}, ['Einstellungen']),
       el('h2', {}, ['Rundenlänge']),
       chips<string>(
@@ -180,7 +191,11 @@ function showSettings() {
         (v) => update({ difficulty: v }),
       ),
       el('p', { className: 'hint' }, ['„Schwer“ enthält auch 24 winzige Staaten wie Monaco oder Tuvalu.']),
-      card('Fertig', 'check', showStart, 'primary', summary(settings, available)),
+      ...(rankedFor(settings)
+        ? [el('p', { className: 'ranked-hint' }, [`Zählt für die Rangliste ${rankedLabel(rankedFor(settings)!)}`])]
+        : []),
+      card('Los geht’s', 'play', () => startRound(settings), 'primary', summary(settings, available)),
+      el('button', { className: 'text-button', onclick: showStart }, ['Zurück']),
     ]),
   );
 }
@@ -191,20 +206,151 @@ function recordText(entry: RecordEntry, endless: boolean): string {
 }
 
 function showStart() {
-  const best = loadRecords(browserStore())[recordKey(STANDARD)];
+  const best = loadRecords(browserStore())[recordKey(rankedSettings(RANKED[0]))];
   app.replaceChildren(
     el('section', { className: 'screen start' }, [
       el('p', { className: 'kicker' }, ['Länderquiz']),
       el('h1', {}, ['Welches Land ist das?']),
       el('p', { className: 'lead' }, ['Erkennst du die Länder an ihrem Umriss?']),
       ...(best
-        ? [el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord (10 Länder · Welt · Normal)']), recordText(best, false)])]
+        ? [el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord · Rangliste Welt']), recordText(best, false)])]
         : []),
       map(),
-      card('Los geht’s', 'play', newRound, 'primary'),
-      card('Einstellungen', 'settings', showSettings, 'secondary', summary(settings, pool(settings).length)),
+      card('Rangliste', 'trophy', showRanked, 'primary highlight', 'Welt oder Kontinent · mit Bestenliste'),
+      card('Freies Spiel', 'play', showSettings, 'secondary', summary(settings, pool(settings).length)),
+      card('Bestenliste', 'list', () => showLeaderboard(), 'secondary'),
     ]),
   );
+}
+
+// Auswahl der Ranglisten-Runden
+function showRanked() {
+  const records = loadRecords(browserStore());
+  app.replaceChildren(
+    el('section', { className: 'screen ranked' }, [
+      el('p', { className: 'kicker' }, ['Rangliste']),
+      el('h1', {}, ['Wähle deine Rangliste']),
+      el('p', { className: 'lead' }, ['Feste Runden im Modus Normal. Danach kannst du dich in die Bestenliste eintragen.']),
+      ...RANKED.map((mode, i) => {
+        const best = records[recordKey(rankedSettings(mode))];
+        const sub = `${mode.length} Länder${best ? ` · Dein Rekord ${best.score}/${best.total}` : ''}`;
+        return card(rankedLabel(mode), 'play', () => startRound(rankedSettings(mode)), i === 0 ? 'primary' : 'secondary', sub);
+      }),
+      el('button', { className: 'text-button', onclick: showStart }, ['Zurück']),
+    ]),
+  );
+}
+
+const NAME_KEY = 'laenderquiz:name';
+
+function rememberedName(): string {
+  try {
+    return browserStore()?.getItem(NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+// Eintrag in die Bestenliste, nur nach einer Ranglisten-Runde
+function leaderboardEntry(round: Round): HTMLElement {
+  const mode = round.endless ? undefined : rankedFor(active);
+  if (!mode || round.questions.length !== mode.length)
+    return el('p', { className: 'hint center' }, ['In die Bestenliste kommen nur Ranglisten-Runden.']);
+  if (!plausible(round.score, round.totalMs, mode.length))
+    return el('p', { className: 'hint center' }, ['Diese Runde war zu schnell für die Bestenliste.']);
+
+  const input = el('input', {
+    type: 'text',
+    value: rememberedName(),
+    maxLength: NAME_MAX * 2,
+    placeholder: 'Dein Name',
+    autocomplete: 'nickname' as AutoFill,
+    ariaLabel: 'Name für die Bestenliste',
+  });
+  const message = el('p', { className: 'form-message', ariaLive: 'polite' });
+  const box = el('div', { className: 'entry' });
+  let sending = false;
+  const send = async () => {
+    if (sending) return;
+    const check = checkName(input.value);
+    if (!check.ok) {
+      message.textContent = check.message;
+      return;
+    }
+    sending = true;
+    submit.disabled = true;
+    message.textContent = 'Wird eingetragen …';
+    try {
+      const place = await submitEntry(
+        { modus: mode.modus, name: check.name, richtige: round.score, zeit_ms: round.totalMs },
+        mode.length,
+      );
+      try {
+        browserStore()?.setItem(NAME_KEY, check.name);
+      } catch {
+        // ohne Speicher eben nicht merken
+      }
+      box.replaceChildren(
+        el('p', { className: 'entry-done' }, [place > 0 ? `Eingetragen auf Platz ${place}!` : 'Eingetragen!']),
+        card('Bestenliste ansehen', 'list', () => showLeaderboard(mode, check.name), 'secondary'),
+      );
+    } catch (e) {
+      message.textContent = e instanceof LeaderboardError ? e.message : 'Das hat leider nicht geklappt.';
+      submit.disabled = false;
+      sending = false;
+    }
+  };
+  const submit = card('Eintragen', 'check', send, 'secondary');
+  input.onkeydown = (ev) => {
+    if (ev.key === 'Enter') send();
+  };
+  box.append(el('label', { className: 'entry-label' }, ['In die Bestenliste eintragen', input]), message, submit);
+  return box;
+}
+
+async function showLeaderboard(mode: RankedMode = RANKED[0], highlight?: string) {
+  const list = el('ol', { className: 'board' });
+  const status = el('p', { className: 'lead center' }, ['Lädt …']);
+  app.replaceChildren(
+    el('section', { className: 'screen leaderboard' }, [
+      el('p', { className: 'kicker' }, ['Rangliste']),
+      el('h1', {}, ['Bestenliste']),
+      chips(
+        RANKED.map((m) => ({ label: m.modus, value: m })),
+        (m) => m === mode,
+        (m) => showLeaderboard(m),
+      ),
+      el('p', { className: 'hint center' }, [`${rankedLabel(mode)} · ${mode.length} Länder · Normal`]),
+      status,
+      list,
+      card(`${rankedLabel(mode)} spielen`, 'play', () => startRound(rankedSettings(mode)), 'primary', `${mode.length} Länder · Normal`),
+      card('Zurück zum Start', 'arrow', showStart, 'secondary'),
+    ]),
+  );
+  try {
+    const entries = await fetchTop(mode.modus, 20);
+    if (!list.isConnected) return; // inzwischen anderer Reiter gewählt
+    status.remove();
+    if (entries.length === 0) {
+      list.replaceWith(el('p', { className: 'lead center' }, ['Noch niemand eingetragen. Sei die oder der Erste!']));
+      return;
+    }
+    let marked = false;
+    list.append(
+      ...entries.map((entry, i) => {
+        const mine = !marked && entry.name === highlight;
+        if (mine) marked = true;
+        return el('li', { className: mine ? 'mine' : '' }, [
+          el('span', { className: 'rank' }, [`${i + 1}.`]),
+          el('span', { className: 'name' }, [entry.name]),
+          el('span', { className: 'points' }, [`${entry.richtige}/${mode.length}`]),
+          el('span', { className: 'ms' }, [formatTime(entry.zeit_ms)]),
+        ]);
+      }),
+    );
+  } catch (e) {
+    status.textContent = e instanceof LeaderboardError ? e.message : 'Die Bestenliste konnte nicht geladen werden.';
+  }
 }
 
 function showQuestion(round: Round) {
@@ -266,6 +412,9 @@ function showQuestion(round: Round) {
 
   app.replaceChildren(
     el('section', { className: 'screen game' }, [
+      ...(!round.endless && rankedFor(active)
+        ? [el('p', { className: 'badge' }, [`Rangliste · ${rankedLabel(rankedFor(active)!)}`])]
+        : []),
       el('header', { className: 'status' }, [
         el('span', {}, [round.endless ? `Frage ${round.index + 1}` : `Frage ${round.index + 1} von ${round.questions.length}`]),
         el('span', {}, [`${round.score} richtig`]),
@@ -291,13 +440,14 @@ function finish(round: Round) {
 function showResult(round: Round) {
   const total = round.questions.length;
   const endless = round.endless === true;
-  const update = submitResult(browserStore(), recordKey(settings), { score: round.score, total, ms: round.totalMs });
+  const update = submitResult(browserStore(), recordKey(active), { score: round.score, total, ms: round.totalMs });
   const record = update.isNew
     ? el('p', { className: 'record new' }, [
         el('span', {}, [update.previous ? 'Neuer Rekord!' : 'Dein erster Rekord']),
-        update.previous ? `Bisher: ${recordText(update.previous, endless)}` : summary(settings, pool(settings).length),
+        update.previous ? `Bisher: ${recordText(update.previous, endless)}` : summary(active, pool(active).length),
       ])
     : el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord']), recordText(update.best, endless)]);
+  const entry = leaderboardEntry(round);
   app.replaceChildren(
     el('section', { className: 'screen result' }, [
       el('p', { className: 'kicker' }, ['Ergebnis']),
@@ -306,9 +456,13 @@ function showResult(round: Round) {
       el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
       el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
       record,
-      map(),
-      card('Neue Runde', 'again', newRound, 'primary', summary(settings, pool(settings).length)),
-      card('Einstellungen', 'settings', showSettings, 'secondary'),
+      entry,
+      // Auf kleinen Displays ist neben dem Eintragsfeld kein Platz für die Karte
+      ...(entry.classList.contains('entry') ? [] : [map()]),
+      card('Neue Runde', 'again', newRound, 'primary', summary(active, pool(active).length)),
+      rankedFor(active)
+        ? card('Andere Rangliste', 'trophy', showRanked, 'secondary')
+        : card('Einstellungen', 'settings', showSettings, 'secondary'),
     ]),
   );
 }
