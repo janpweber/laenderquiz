@@ -41,14 +41,26 @@ function shuffle<T>(items: T[], rng: Rng): T[] {
 
 const OPTION_COUNT = 4;
 
+// Falsche Antworten bevorzugt aus derselben Teilregion, dann vom selben
+// Kontinent, dann aus aller Welt. So ist die Frage nicht zu leicht.
+function pickDistractors(country: Country, pool: Country[], rng: Rng): Country[] {
+  const others = shuffle(
+    pool.filter((c) => c.code !== country.code),
+    rng,
+  );
+  const tiers = [
+    others.filter((c) => c.subregion !== undefined && c.subregion === country.subregion),
+    others.filter((c) => c.continent !== undefined && c.continent === country.continent && c.subregion !== country.subregion),
+    others.filter((c) => c.continent === undefined || c.continent !== country.continent),
+  ];
+  return tiers.flat().slice(0, OPTION_COUNT - 1);
+}
+
 export function createRound(countries: Country[], settings: RoundSettings, rng: Rng = Math.random): Round {
   const length = Math.max(1, Math.min(settings.length, countries.length));
   const picked = shuffle(countries, rng).slice(0, length);
   const questions = picked.map((country) => {
-    const distractors = shuffle(
-      countries.filter((c) => c.code !== country.code),
-      rng,
-    ).slice(0, OPTION_COUNT - 1);
+    const distractors = pickDistractors(country, countries, rng);
     return { country, options: shuffle([country, ...distractors], rng) };
   });
   return { questions, index: 0, score: 0 };
