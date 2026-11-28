@@ -118,22 +118,36 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 
 // Vom Umriss-Ausschnitt auf die ganze Karte herauszoomen
 export function zoomOut(svg: SVGSVGElement, ms = 500, delay = 0): void {
-  const start0 = svg.dataset.from?.split(' ').map(Number) as ViewBox | undefined;
   const to: ViewBox = [0, 0, W, H];
-  if (!start0 || start0.length !== 4 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const from = startView(svg);
+  if (!from || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   // Der Umriss wird eingepasst („meet“), die Karte füllt („slice“): Start-Ausschnitt auf das
   // Seitenverhältnis der Fläche erweitern, dann sieht der erste Frame genau wie der Umriss aus
-  const from = fitAspect(start0, contentAspect(svg));
-  svg.setAttribute('viewBox', from.join(' '));
+  setView(svg, from);
   let start: number | undefined;
   const step = (now: number) => {
     if (svg.dataset.touched) return; // Nutzer zoomt oder verschiebt selbst: Animation abbrechen
     start ??= now + delay;
     const t = Math.min(1, Math.max(0, (now - start) / ms));
-    svg.setAttribute('viewBox', interpolateViewBox(from, to, ease(t)).join(' '));
+    setView(svg, interpolateViewBox(from, to, ease(t)));
     if (t < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
+}
+
+// Ausschnitt setzen; Ringe um winzige Länder nur zeigen, wenn man weit genug herausgezoomt ist
+// (ab dann wäre das Land ohne Ring kaum zu finden, beim Hineinzoomen verschwinden sie wieder)
+export const MARKER_MIN_WIDTH = 400;
+function setView(svg: SVGSVGElement, v: ViewBox): void {
+  svg.setAttribute('viewBox', v.join(' '));
+  const show = v[2] >= MARKER_MIN_WIDTH;
+  svg.querySelectorAll('.marker').forEach((m) => m.classList.toggle('away', !show));
+}
+
+// Startausschnitt (Umriss) auf die Zeichenfläche erweitert: näher kann man nicht heranzoomen
+function startView(svg: SVGSVGElement): ViewBox | undefined {
+  const start = svg.dataset.from?.split(' ').map(Number) as ViewBox | undefined;
+  return start && start.length === 4 ? fitAspect(start, contentAspect(svg)) : undefined;
 }
 
 export function fitAspect([x, y, w, h]: ViewBox, aspect: number): ViewBox {
@@ -156,12 +170,13 @@ function contentAspect(svg: SVGSVGElement): number {
 // Mit den Fingern zoomen (zwei Finger) und verschieben (ein Finger), am Laptop mit Mausrad und Ziehen.
 // Doppeltipp zoomt hinein. Es wird nur der Ausschnitt (viewBox) verändert.
 export function enableGestures(svg: SVGSVGElement): void {
-  const MIN_W = W / 40;
+  // Am nächsten heran: so wie der Umriss am Anfang zu sehen war
+  const MIN_W = startView(svg)?.[2] ?? W / 4;
   const MAX_W = W * 4;
   const pointers = new Map<number, { x: number; y: number }>();
   let lastTap = 0;
   const get = () => svg.getAttribute('viewBox')!.split(' ').map(Number) as ViewBox;
-  const set = (v: ViewBox) => svg.setAttribute('viewBox', v.join(' '));
+  const set = (v: ViewBox) => setView(svg, v);
   // Bildschirmpunkt in Karten-Koordinaten (berücksichtigt „slice“ und Innenabstand)
   const toMap = (cx: number, cy: number): [number, number] => {
     const ctm = svg.getScreenCTM();

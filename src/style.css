@@ -431,9 +431,11 @@ button {
 /* Nach der Antwort: Umgebung blendet kurz ein, dann zoomt die Karte heraus */
 .context-map.reveal .sea,
 .context-map.reveal .land, .context-map.reveal .wrong { animation: context-in 0.15s ease-out both; }
-/* Ringe um winzige Länder erst nach dem Zoom zeigen, sonst wirken sie anfangs riesig */
-.context-map.reveal .marker { animation: context-in 0.2s ease-out 0.6s both; }
+/* Ringe um winzige Länder nur weit herausgezoomt zeigen, sonst wirken sie riesig */
+.context-map .marker { transition: opacity 0.2s ease-out; }
+.context-map .marker.away { opacity: 0; }
 @keyframes context-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .context-map.reveal .sea, .context-map.reveal .land, .context-map.reveal .wrong, .context-map.reveal .marker { animation: none; }
+  .context-map.reveal .sea, .context-map.reveal .land, .context-map.reveal .wrong { animation: none; }
+  .context-map .marker { transition: none; }
 }

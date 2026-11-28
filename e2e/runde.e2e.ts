@@ -195,4 +195,10 @@ test('falsche Antwort: das gewählte Land ist auf der Karte dunkel markiert, Kar
   await map.hover();
   await page.mouse.wheel(0, -300);
   expect(await width()).toBeLessThan(before);
+  // näher als der Umriss am Anfang geht es nicht
+  for (let i = 0; i < 20; i++) await page.mouse.wheel(0, -300);
+  const closest = await width();
+  await page.mouse.wheel(0, -300);
+  expect(await width()).toBeCloseTo(closest, 3);
+  expect(closest).toBeGreaterThan(50);
 });
