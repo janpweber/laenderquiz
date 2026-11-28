@@ -508,3 +508,8 @@ button {
 
 /* Zurück aus der Durchsicht: nur zusammensetzen, keine Explosion */
 .region-art.assemble .burst { animation: none; }
+
+/* Meine Challenges */
+.my-challenges { display: flex; flex-direction: column; gap: 10px; }
+.section-title { margin: 10px 0 0; font-size: 0.8rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.my-challenges .hint { margin: 0; }

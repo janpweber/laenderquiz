@@ -6,6 +6,13 @@ import {
   challengeRound,
   conditions,
   fixQuestions,
+  idsFromAttemptKeys,
+  knownChallenges,
+  overview,
+  rememberChallenge,
+  KNOWN_MAX,
+  type Challenge,
+  type ChallengeResult,
   newId,
   ID_PATTERN,
   playerId,
@@ -114,5 +121,54 @@ describe('Versuche und Kennungen', () => {
   });
   it('beschreibt die Bedingungen', () => {
     expect(conditions(base)).toEqual(['10 Länder · Europa', '3 Sekunden pro Land', '3 Versuche, der beste zählt', 'Länder für jeden zufällig']);
+  });
+});
+
+describe('Meine Challenges', () => {
+  it('merkt sich geöffnete und erstellte Challenges, neueste zuerst', () => {
+    const store = memoryStore();
+    rememberChallenge(store, 'aaaaaaaa', true, 1);
+    rememberChallenge(store, 'bbbbbbbb', false, 2);
+    rememberChallenge(store, 'aaaaaaaa', false, 3);
+    expect(knownChallenges(store)).toEqual([
+      { id: 'aaaaaaaa', eigene: true, at: 3 },
+      { id: 'bbbbbbbb', eigene: false, at: 2 },
+    ]);
+  });
+  it('ignoriert ungültige Kennungen und begrenzt die Liste', () => {
+    const store = memoryStore();
+    rememberChallenge(store, 'kaputt', false, 1);
+    expect(knownChallenges(store)).toEqual([]);
+    for (let i = 0; i < KNOWN_MAX + 5; i++) rememberChallenge(store, `a${String(i).padStart(7, '0')}`, false, i);
+    expect(knownChallenges(store)).toHaveLength(KNOWN_MAX);
+    store.setItem('laenderquiz:challenges', '{kaputt');
+    expect(knownChallenges(store)).toEqual([]);
+  });
+  it('findet früher gespielte Challenges in den Versuchs-Einträgen', () => {
+    expect(idsFromAttemptKeys(['laenderquiz:challenge:abcdefgh', 'laenderquiz:spieler', 'laenderquiz:challenge:x', 'laenderquiz:challenges'])).toEqual([
+      'abcdefgh',
+    ]);
+  });
+  it('teilt in offen und gespielt, mit Platz und bestem Ergebnis', () => {
+    const one: Challenge = { ...base, id: 'aaaaaaaa', versuche: 1 };
+    const three: Challenge = { ...base, id: 'bbbbbbbb', versuche: 3 };
+    const fresh: Challenge = { ...base, id: 'cccccccc', versuche: 1 };
+    const r = (challenge_id: string, spieler: string, versuch: number, richtige: number): ChallengeResult => ({
+      challenge_id, spieler, name: spieler, versuch, richtige, zeit_ms: 10000,
+    });
+    const results = [r('aaaaaaaa', 'ich', 1, 6), r('aaaaaaaa', 'anna', 1, 9), r('bbbbbbbb', 'ich', 1, 8), r('bbbbbbbb', 'ich', 2, 4)];
+    const known = [
+      { id: 'cccccccc', eigene: true, at: 3 },
+      { id: 'bbbbbbbb', eigene: false, at: 2 },
+      { id: 'aaaaaaaa', eigene: false, at: 1 },
+      { id: 'gelöscht', eigene: false, at: 0 },
+    ];
+    const used = (id: string) => (id === 'bbbbbbbb' ? 1 : 0); // Ergebnisse zählen mit, auch wenn der Speicher weniger weiß
+    const { offen, gespielt } = overview(known, [one, three, fresh], results, 'ich', used);
+    expect(offen.map((s) => [s.challenge.id, s.left, s.rank, s.best?.richtige, s.eigene])).toEqual([
+      ['cccccccc', 1, undefined, undefined, true],
+      ['bbbbbbbb', 1, 1, 8, false],
+    ]);
+    expect(gespielt.map((s) => [s.challenge.id, s.left, s.rank, s.players])).toEqual([['aaaaaaaa', 0, 2, 2]]);
   });
 });

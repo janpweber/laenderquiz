@@ -5,6 +5,18 @@ function fakeChallenges() {
   const challenges: Record<string, unknown>[] = [];
   const results: Record<string, unknown>[] = [];
   const cors = { 'access-control-allow-origin': '*' };
+  // PostgREST-Filter wie id=eq.x, id=in.(a,b) nachbilden
+  const filter = (rows: Record<string, unknown>[], url: string) => {
+    const params = new URL(url).searchParams;
+    return rows.filter((row) =>
+      [...params].every(([key, value]) => {
+        if (['select', 'limit', 'order'].includes(key)) return true;
+        if (value.startsWith('eq.')) return String(row[key]) === value.slice(3);
+        if (value.startsWith('in.(')) return value.slice(4, -1).split(',').includes(String(row[key]));
+        return true;
+      }),
+    );
+  };
   const install = async (context: BrowserContext) => {
     await context.route('**/rest/v1/challenges**', async (route) => {
       const request = route.request();
@@ -12,8 +24,7 @@ function fakeChallenges() {
         challenges.push(request.postDataJSON());
         return route.fulfill({ status: 201, headers: cors, body: '' });
       }
-      const id = new URL(request.url()).searchParams.get('id')?.replace(/^eq\./, '');
-      const body = JSON.stringify(challenges.filter((c) => c.id === id));
+      const body = JSON.stringify(filter(challenges, request.url()));
       return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body });
     });
     await context.route('**/rest/v1/challenge_ergebnisse**', async (route) => {
@@ -22,7 +33,7 @@ function fakeChallenges() {
         results.push({ ...request.postDataJSON(), created_at: new Date().toISOString() });
         return route.fulfill({ status: 201, headers: cors, body: '' });
       }
-      return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify(results) });
+      return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify(filter(results, request.url())) });
     });
   };
   return { challenges, results, install };
@@ -93,7 +104,28 @@ test('Challenge erstellen, per Link spielen, Rangliste und Versuche', async ({ b
   await guest.locator('.card', { hasText: 'Rangliste ansehen' }).click();
   // pro Person nur der beste Versuch
   await expect(guest.locator('.board li')).toHaveCount(1);
+
+  // Anna findet die Challenge unter „Meine Challenges“ als gespielt
+  await guest.goto('http://localhost:4174/');
+  await guest.locator('.card', { hasText: 'Meine Challenges' }).click();
+  await expect(guest.locator('.my-challenges .card')).toHaveCount(1);
+  await expect(guest.locator('.my-challenges')).toContainText('Gerade keine offene Challenge.');
+  await expect(guest.locator('.my-challenges .card')).toContainText('Platz 1 von 1');
+  await guest.locator('.my-challenges .card').click();
+  await expect(guest.locator('.board li.mine')).toContainText('Anna');
+  await guest.getByRole('button', { name: 'Zurück' }).click();
+  await expect(guest.locator('h1')).toHaveText('Meine Challenges');
   await other.close();
+
+  // Jan hat die eigene Challenge noch nicht gespielt: sie steht unter „Offen“
+  await page.goto('./');
+  await page.locator('.card', { hasText: 'Meine Challenges' }).click();
+  const own = page.locator('.my-challenges .card', { hasText: 'Büro-Challenge' });
+  await expect(own).toContainText('von dir');
+  await expect(own).toContainText('3 Versuche offen');
+  await expect(page.locator('.my-challenges')).toContainText('Noch keine Challenge zu Ende gespielt.');
+  await own.click();
+  await expect(page.locator('.card', { hasText: 'Los geht' })).toBeVisible();
 });
 
 test('unbekannter Challenge-Link', async ({ page, context }) => {

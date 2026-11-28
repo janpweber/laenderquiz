@@ -56,6 +56,8 @@ Ziel und Umsetzungsschritte stehen in [docs/prd](docs/prd/laenderquiz.md).
 
 Über „Challenge erstellen“ legt man Bedingungen fest (Region, Anzahl, Tempo, gleiche Länder, Versuche) und teilt einen Link `…/laenderquiz/?c=<id>`. Gespeichert wird in den Supabase-Tabellen `challenges` und `challenge_ergebnisse`. Dafür muss `supabase/schema.sql` einmal (erneut) im SQL Editor ausgeführt werden; das Skript ist idempotent und lässt die Bestenliste unverändert. Löschen geht im Table Editor, beim Löschen einer Challenge verschwinden ihre Ergebnisse mit.
 
+„Meine Challenges“ auf der Startseite listet alle Challenges, die dieses Gerät erstellt, geöffnet oder gespielt hat, getrennt nach „Offen“ (noch Versuche übrig) und „Gespielt“ (mit Platz und bestem Ergebnis). Gemerkt werden nur die IDs im Browser (`laenderquiz:challenges`); früher gespielte Challenges findet die Liste über die Spieler-Kennung in `challenge_ergebnisse`. Es gibt keine Anmeldung, die Liste gilt also pro Gerät und Browser.
+
 ## Sperrwörter
 
 Gesperrte Wörter für Namen und Challenge-Titel stehen in der Supabase-Tabelle `sperrwoerter` (App und Datenbank-Prüfung lesen beide daraus):

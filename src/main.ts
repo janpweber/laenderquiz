@@ -38,6 +38,15 @@ import {
   useAttempt,
   type Challenge,
   type ChallengeSetup,
+  type ChallengeStatus,
+  type KnownChallenge,
+  fetchAllResults,
+  fetchChallenges,
+  idsFromAttemptKeys,
+  knownChallenges,
+  overview,
+  playedChallengeIds,
+  rememberChallenge,
 } from './challenge';
 import { loadHistory, mistakes, recentCountries, recordAnswer } from './practice';
 import { TEMPOS, loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
@@ -274,6 +283,7 @@ function recordText(entry: RecordEntry, endless: boolean): string {
 }
 
 function showStart() {
+  const mine = myKnownChallenges();
   const best = loadRecords(browserStore())[recordKey(rankedSettings(RANKED[0]))];
   app.replaceChildren(
     el('section', { className: 'screen start' }, [
@@ -288,6 +298,9 @@ function showStart() {
       card('Freies Spiel', 'play', showSettings, 'secondary', summary(settings, pool(settings).length)),
       card('Üben', 'again', showPractice, 'secondary', practiceSummary()),
       card('Freunde herausfordern', 'flag', () => showChallengeCreate(), 'secondary', 'Challenge per Link'),
+      ...(mine.length
+        ? [card('Meine Challenges', 'list', showMyChallenges, 'secondary', mine.length === 1 ? '1 Challenge' : `${mine.length} Challenges`)]
+        : []),
       card('Bestenliste', 'list', () => showLeaderboard(), 'secondary'),
     ]),
   );
@@ -868,6 +881,7 @@ function showChallengeCreate(from?: Settings) {
     };
     try {
       const challenge = await createChallenge(challengeSetup);
+      rememberChallenge(browserStore(), challenge.id, true);
       rememberName(n.name);
       showChallengeCreated(challenge);
     } catch (e) {
@@ -962,6 +976,7 @@ async function openChallenge(id: string) {
 // Einladung: wer fordert heraus, unter welchen Bedingungen, wie viele Versuche sind übrig
 function showChallengeInvite(challenge: Challenge) {
   history.replaceState(null, '', `?c=${challenge.id}`);
+  rememberChallenge(browserStore(), challenge.id);
   const used = attemptsUsed(browserStore(), challenge.id);
   const left = challenge.versuche - used;
   loadBlockedWords();
@@ -1089,6 +1104,79 @@ async function showChallengeBoard(challenge: Challenge, back?: () => void) {
     );
   } catch (e) {
     status.textContent = e instanceof LeaderboardError ? e.message : 'Die Rangliste konnte nicht geladen werden.';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Meine Challenges: alles, was dieses Gerät erstellt, geöffnet oder gespielt hat
+// ---------------------------------------------------------------------------
+
+// Gemerkte Challenges plus solche, die vor dieser Liste schon gespielt wurden
+function myKnownChallenges(extraIds: string[] = []): KnownChallenge[] {
+  const known = knownChallenges(browserStore());
+  let keys: string[] = [];
+  try {
+    keys = Object.keys(localStorage);
+  } catch {
+    // ohne Speicher nur, was der Server kennt
+  }
+  const ids = new Set(known.map((k) => k.id));
+  const extra = [...idsFromAttemptKeys(keys), ...extraIds].filter((id) => !ids.has(id) && ids.add(id));
+  return [...known, ...extra.map((id) => ({ id, eigene: false, at: 0 }))];
+}
+
+const attemptsText = (n: number) => (n === 1 ? '1 Versuch' : `${n} Versuche`);
+
+function myChallengeCard(s: ChallengeStatus, open: boolean) {
+  const c = s.challenge;
+  const by = s.eigene ? 'von dir' : `von ${c.ersteller}`;
+  const place = s.rank ? `Platz ${s.rank} von ${s.players} · ${s.best!.richtige}/${c.laender}` : '';
+  const sub = open
+    ? [by, place, s.rank ? `noch ${attemptsText(s.left)}` : `${attemptsText(s.left)} offen`]
+    : [by, place || 'kein Ergebnis eingetragen'];
+  return card(
+    c.titel,
+    open ? 'play' : 'trophy',
+    () => (open ? showChallengeInvite(c) : showChallengeBoard(c, showMyChallenges)),
+    'secondary',
+    sub.filter(Boolean).join(' · '),
+  );
+}
+
+async function showMyChallenges() {
+  history.replaceState(null, '', location.pathname);
+  const content = el('div', { className: 'my-challenges' }, [el('p', { className: 'lead center' }, ['Lädt …'])]);
+  app.replaceChildren(
+    el('section', { className: 'screen my-challenges-screen' }, [
+      el('p', { className: 'kicker' }, ['Challenges']),
+      el('h1', {}, ['Meine Challenges']),
+      content,
+      card('Neue Challenge', 'flag', () => showChallengeCreate(), 'secondary', 'Freunde herausfordern'),
+      el('button', { className: 'text-button', onclick: showStart }, ['Zurück']),
+    ]),
+  );
+  const store = browserStore();
+  const me = playerId(store);
+  try {
+    const played = await playedChallengeIds(me).catch(() => []);
+    const known = myKnownChallenges(played);
+    const ids = known.map((k) => k.id);
+    const [challenges, results] = await Promise.all([fetchChallenges(ids), fetchAllResults(ids)]);
+    const { offen, gespielt } = overview(known, challenges, results, me, (id) => attemptsUsed(store, id));
+    const section = (title: string, list: ChallengeStatus[], open: boolean, empty: string) => [
+      el('h2', { className: 'section-title' }, [title]),
+      ...(list.length ? list.map((s) => myChallengeCard(s, open)) : [el('p', { className: 'hint' }, [empty])]),
+    ];
+    content.replaceChildren(
+      ...section('Offen', offen, true, 'Gerade keine offene Challenge.'),
+      ...section('Gespielt', gespielt, false, 'Noch keine Challenge zu Ende gespielt.'),
+      el('p', { className: 'hint' }, ['Die Liste gilt für dieses Gerät und diesen Browser.']),
+    );
+  } catch (e) {
+    content.replaceChildren(
+      el('p', { className: 'lead center' }, [e instanceof LeaderboardError ? e.message : 'Die Challenges konnten nicht geladen werden.']),
+      card('Nochmal versuchen', 'again', showMyChallenges, 'primary'),
+    );
   }
 }
 
