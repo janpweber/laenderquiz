@@ -148,3 +148,28 @@ test('Flaggen-Hinweis: in der Rangliste erlaubt, dann ohne Bestenliste', async (
   await expect(page.locator('.result')).toContainText('kein Eintrag in die Bestenliste');
   await expect(page.locator('.entry input')).toHaveCount(0);
 });
+
+test('freies Spiel zählt nie für die Bestenliste, auch mit Ranglisten-Einstellungen', async ({ page }) => {
+  // Standard im freien Spiel: 10 Länder · Welt · Normal, also wie die Welt-Rangliste
+  await page.locator('.card', { hasText: 'Freies Spiel' }).click();
+  await page.locator('.card', { hasText: 'Los geht' }).click();
+  await expect(page.locator('.badge')).toBeHidden();
+  await page.locator('.flag-hint').click();
+  await expect(page.locator('.flag-hint-image')).toBeVisible();
+  await expect(page.locator('.hint-note')).toBeHidden();
+  await answerAll(page, 10);
+  await expect(page.locator('.result')).toContainText('nur Ranglisten-Runden');
+  await expect(page.locator('.entry input')).toHaveCount(0);
+});
+
+test('auf der Karte erscheint auch die Flagge, ohne als Hinweis zu zählen', async ({ page }) => {
+  await page.locator('.card', { hasText: 'Rangliste' }).click();
+  await page.locator('.card', { hasText: 'Europa' }).click();
+  await page.locator('.option').first().click();
+  await expect(page.locator('.flag-hint')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Auf der Karte zeigen' }).click();
+  await expect(page.locator('.context-map')).toBeVisible();
+  await expect(page.locator('.flag-hint-image')).toBeVisible();
+  await expect(page.locator('.badge')).toBeVisible();
+  await expect(page.locator('.hint-note')).toBeHidden();
+});
