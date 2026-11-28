@@ -484,3 +484,9 @@ button {
 .conditions li { background: var(--white); padding: 10px 14px; font-weight: 700; }
 .conditions li::before { content: '✓'; color: var(--red); font-weight: 900; margin-right: 8px; }
 .challenge .entry input[readonly] { font-size: 0.85rem; color: var(--grey-dark); }
+
+/* Regionen-Bilder: groß auf „Geschafft“, klein als Logo über Ranglisten */
+.region-art { height: min(26dvh, 220px); }
+.region-art svg, .region-logo svg { margin: 0 auto; max-width: 100%; }
+.region-logo { height: 84px; margin: 0 auto; }
+.region-art.small { height: min(16dvh, 130px); }

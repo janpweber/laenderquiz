@@ -131,6 +131,22 @@ function map(): HTMLDivElement {
   return wrap;
 }
 
+// Bild der Region (Welt oder Kontinent) aus Dreiecken. Auf „Geschafft“ fliegen die Dreiecke
+// wie Konfetti und setzen sich zur Karte zusammen; als Logo (still) ohne Animation.
+// Die Bilder werden erst bei Bedarf geladen.
+const REGION_ART = import.meta.glob<string>('./regions/*.svg', { query: '?raw', import: 'default' });
+function regionArt(region: string, still = false): HTMLDivElement {
+  const wrap = el('div', { className: still ? 'map region-logo still' : 'map region-art' });
+  const load = REGION_ART[`./regions/${region}.svg`];
+  if (load) load().then((svg) => (wrap.innerHTML = svg)).catch(() => wrap.remove());
+  return wrap;
+}
+
+function withClass<T extends Element>(node: T, className: string): T {
+  if (className) node.classList.add(className);
+  return node;
+}
+
 function outline(country: Country): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 1000 1000');
@@ -365,6 +381,7 @@ async function showLeaderboard(mode: RankedMode = RANKED[0], highlight?: string)
     el('section', { className: 'screen leaderboard' }, [
       el('p', { className: 'kicker' }, ['Rangliste']),
       el('h1', {}, ['Bestenliste']),
+      regionArt(mode.modus, true),
       chips(
         RANKED.map((m) => ({ label: m.modus, value: m })),
         (m) => m === mode,
@@ -586,6 +603,8 @@ function showResult(round: Round) {
   // Durchsicht kehrt zu genau diesem Bildschirm zurück (Rekord wird nicht erneut gewertet)
   const back = () => app.replaceChildren(screen);
   const screen = el('section', { className: 'screen result' }, [
+    // Regionen-Bild oben; neben dem Eintragsfeld kleiner, damit alles auf den Bildschirm passt
+    withClass(regionArt(active.continent), entry.classList.contains('entry') ? 'small' : ''),
     el('p', { className: 'kicker' }, ['Ergebnis']),
     el('h1', {}, ['Geschafft!']),
     el('p', { className: 'score' }, [`${round.score} von ${total}`]),
@@ -596,8 +615,6 @@ function showResult(round: Round) {
     el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
     record,
     entry,
-    // Auf kleinen Displays ist neben dem Eintragsfeld kein Platz für die Karte
-    ...(entry.classList.contains('entry') ? [] : [map()]),
     card('Neue Runde', 'again', newRound, 'primary', summary(active, pool(active).length)),
     ...(round.answers.length > 0
       ? [card('Antworten durchgehen', 'list', () => showReview(round, 0, back), 'secondary', 'Karte, Flagge und deine Antwort')]
@@ -896,6 +913,7 @@ function showChallengeResult(round: Round, current: NonNullable<typeof activeCha
   const status = el('p', { className: 'form-message center', ariaLive: 'polite' }, ['Ergebnis wird eingetragen …']);
   const back = () => app.replaceChildren(screen);
   const screen = el('section', { className: 'screen result' }, [
+    withClass(regionArt(challenge.region), 'small'),
     el('p', { className: 'kicker' }, [`Challenge · ${challenge.titel}`]),
     el('h1', {}, ['Geschafft!']),
     el('p', { className: 'score' }, [`${round.score} von ${total}`]),
@@ -935,6 +953,7 @@ async function showChallengeBoard(challenge: Challenge, back?: () => void) {
     el('section', { className: 'screen leaderboard' }, [
       el('p', { className: 'kicker' }, ['Challenge']),
       el('h1', {}, [challenge.titel]),
+      regionArt(challenge.region, true),
       el('p', { className: 'lead' }, [`von ${challenge.ersteller} · ${conditions(challenge).slice(0, 2).join(' · ')}`]),
       status,
       list,
