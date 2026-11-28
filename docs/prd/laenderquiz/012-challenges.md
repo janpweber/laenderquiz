@@ -3,10 +3,10 @@
 PRD: docs/prd/laenderquiz.md
 Typ: HITL (Jan muss das SQL-Schema in Supabase ausführen)
 Blockiert durch: 011
-Status: geplant
+Status: in Review
 
 ## Was (Entscheidungen von Jan, 28.11.2026)
-- Jeder kann eine Challenge erstellen: Startbildschirm „Challenge erstellen“ oder auf dem Ergebnis „Freunde herausfordern“ (mit den gerade gespielten Einstellungen).
+- Jeder kann eine Challenge erstellen: Startbildschirm „Freunde herausfordern“ oder auf dem Ergebnis „Freunde herausfordern“ (mit den gerade gespielten Einstellungen).
 - Einstellungen: Name der Challenge, eigener Name, Region (Welt oder Kontinent), 5/10/20 Länder, Tempo (ohne, 5, 3, 2 s), gleiche Länder für alle (ja/nein), Versuche (1, 3, 5).
 - Gleiche Länder: Länder und Antwortmöglichkeiten sind für alle gleich, die Reihenfolge wird pro Person gemischt. Bei mehreren Versuchen ist jeder Versuch vorab festgelegt, alle haben dieselben Versuche.
 - Teilen per Link (WhatsApp usw., Web Share API, sonst Link kopieren). Der Link öffnet direkt „<Name> fordert dich heraus …“.

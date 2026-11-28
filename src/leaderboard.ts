@@ -36,9 +36,9 @@ export function plausible(richtige: number, ms: number, fragen: number): boolean
 
 export class LeaderboardError extends Error {}
 
-type Fetch = typeof fetch;
+export type Fetch = typeof fetch;
 
-async function request(fetchFn: Fetch, url: string, init: RequestInit = {}): Promise<Response> {
+export async function request(fetchFn: Fetch, url: string, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {

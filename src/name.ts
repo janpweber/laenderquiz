@@ -51,10 +51,11 @@ export function normalizeForFilter(name: string): string {
 
 export type NameCheck = { ok: true; name: string } | { ok: false; message: string };
 
-export function checkName(input: string): NameCheck {
+// max und Bezeichnung anpassbar, z. B. für den Titel einer Challenge
+export function checkName(input: string, max = NAME_MAX, what = 'Name'): NameCheck {
   const name = input.trim().replace(/\s+/g, ' ');
-  if (name.length === 0) return { ok: false, message: 'Bitte gib einen Namen ein.' };
-  if ([...name].length > NAME_MAX) return { ok: false, message: `Der Name darf höchstens ${NAME_MAX} Zeichen haben.` };
+  if (name.length === 0) return { ok: false, message: `Bitte gib einen ${what} ein.` };
+  if ([...name].length > max) return { ok: false, message: `Der ${what} darf höchstens ${max} Zeichen haben.` };
   const normalized = normalizeForFilter(name);
   if (BLOCKLIST.some((word) => normalized.includes(word)))
     return { ok: false, message: 'Dieser Name geht leider nicht. Bitte wähle einen anderen.' };

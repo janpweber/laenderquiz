@@ -51,3 +51,7 @@ Die Flaggen für den Hinweis stammen aus [flag-icons](https://github.com/lipis/f
 ## Planung
 
 Ziel und Umsetzungsschritte stehen in [docs/prd](docs/prd/laenderquiz.md).
+
+## Challenges
+
+Über „Challenge erstellen“ legt man Bedingungen fest (Region, Anzahl, Tempo, gleiche Länder, Versuche) und teilt einen Link `…/laenderquiz/?c=<id>`. Gespeichert wird in den Supabase-Tabellen `challenges` und `challenge_ergebnisse`. Dafür muss `supabase/schema.sql` einmal (erneut) im SQL Editor ausgeführt werden; das Skript ist idempotent und lässt die Bestenliste unverändert. Löschen geht im Table Editor, beim Löschen einer Challenge verschwinden ihre Ergebnisse mit.
