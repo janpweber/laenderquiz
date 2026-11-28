@@ -361,3 +361,19 @@ button {
 .card.highlight { background: var(--black); color: var(--white); }
 .card.highlight small { color: var(--grey); }
 .card.highlight .chevron { color: var(--white); }
+
+/* Spiel-Bildschirm kompakter, damit nach der Antwort „Weiter“ ohne Scrollen sichtbar ist
+   (auch bei größerer Schrift in den Android-Einstellungen) */
+.game { gap: 8px; }
+.game .outline, .game .context-map { max-height: 30dvh; aspect-ratio: 1.45; padding: 6px; }
+.game .options { gap: 6px; }
+.game .card { min-height: 50px; padding: 5px 14px 5px 8px; gap: 12px; border-radius: 12px; }
+.game .card .icon { width: 34px; height: 34px; font-size: 0.9rem; }
+.game .card .icon svg { width: 19px; height: 19px; }
+.game .card .label { font-size: 0.98rem; }
+.game .feedback { font-size: 1rem; min-height: 1.3em; }
+.game .text-button { padding: 2px 12px; font-size: 0.85rem; }
+@media (max-height: 700px) {
+  .game .outline, .game .context-map { max-height: 26dvh; }
+  .game .card { min-height: 44px; }
+}
