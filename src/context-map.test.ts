@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { viewRadius } from './context-map';
+import { sizeComparison, viewRadius } from './context-map';
 
 describe('Kartenausschnitt', () => {
   it('zeigt bei kleinen Ländern trotzdem die Nachbarschaft', () => {
@@ -40,5 +40,20 @@ describe('Zoom aus dem Umriss', () => {
     const to: [number, number, number, number] = [0, 0, 1000, 750];
     expect(interpolateViewBox(from, to, 0)).toEqual(from);
     interpolateViewBox(from, to, 1).forEach((v, i) => expect(v).toBeCloseTo(to[i], 6));
+  });
+});
+
+describe('sizeComparison', () => {
+  it('größer als Deutschland', () => {
+    expect(sizeComparison(2.345)).toBe('2,3 × so groß wie Deutschland');
+    expect(sizeComparison(47.8)).toBe('48 × so groß wie Deutschland');
+  });
+  it('kleiner als Deutschland', () => {
+    expect(sizeComparison(1 / 8)).toBe('Deutschland ist 8 × so groß');
+    expect(sizeComparison(1 / 1.5)).toBe('Deutschland ist 1,5 × so groß');
+    expect(sizeComparison(1 / 5000)).toBe('Deutschland ist über 1000 × so groß');
+  });
+  it('etwa gleich groß', () => {
+    expect(sizeComparison(1.02)).toBe('etwa so groß wie Deutschland');
   });
 });

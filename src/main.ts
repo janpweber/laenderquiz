@@ -12,7 +12,7 @@ import {
   type Round,
 } from './game';
 import germanySvg from './germany.svg?raw';
-import { contextMap, enableGestures, preloadWorld, zoomOut } from './context-map';
+import { contextMap, enableGestures, preloadWorld, sizeComparison, zoomOut } from './context-map';
 import { formatTime, startQuestionClock } from './timer';
 import { browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
 import { RANKED, rankedLabel, rankedSettings, type RankedMode } from './ranked';
@@ -89,6 +89,19 @@ function chips<T>(options: { label: string; value: T }[], selected: (v: T) => bo
       el('button', { className: selected(o.value) ? 'chip selected' : 'chip', onclick: () => onpick(o.value) }, [o.label]),
     ),
   );
+}
+
+// Kleiner gestrichelter Deutschland-Umriss als Symbol für den Größenvergleich
+const germanyPath = allCountries.find((c) => c.code === 'DEU')?.path ?? '';
+function germanyIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '150 0 700 1000');
+  svg.setAttribute('class', 'icon-de');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', germanyPath);
+  svg.append(path);
+  return svg;
 }
 
 // Deutschland aus Dreiecken, Berlin und Freiburg schwarz markiert
@@ -380,6 +393,19 @@ function showQuestion(round: Round) {
       shape.replaceWith(map);
       zoomOut(map, 500, 150);
       enableGestures(map);
+      if (map.dataset.ratio) {
+        // Zahl immer, Deutschland-Silhouette nur auf Tipp, damit die Karte ruhig bleibt
+        const compare = el('button', { className: 'size-compare', ariaLabel: 'Deutschland zum Vergleich einblenden' }, [
+          germanyIcon(),
+          sizeComparison(Number(map.dataset.ratio)),
+        ]);
+        compare.setAttribute('aria-pressed', 'false');
+        compare.onclick = () => {
+          const on = map.classList.toggle('compare');
+          compare.setAttribute('aria-pressed', String(on));
+        };
+        stage.append(compare);
+      }
     } catch {
       // ohne Netz bleibt einfach der Umriss stehen
     }

@@ -202,3 +202,21 @@ test('falsche Antwort: das gewählte Land ist auf der Karte dunkel markiert, Kar
   expect(await width()).toBeCloseTo(closest, 3);
   expect(closest).toBeGreaterThan(50);
 });
+
+test('Größenvergleich: Zahl steht da, Deutschland erscheint erst auf Tipp', async ({ page }) => {
+  await page.locator('.card', { hasText: 'Rangliste' }).click();
+  await page.locator('.card', { hasText: 'Welt' }).click();
+  // Deutschland selbst hat keinen Vergleich: notfalls weiterklicken
+  for (let i = 0; i < 3; i++) {
+    await page.locator('.option').first().click();
+    await expect(page.locator('.context-map')).toBeVisible();
+    if ((await page.locator('.size-compare').count()) > 0) break;
+    await page.locator('.next').click();
+  }
+  const compare = page.locator('.size-compare');
+  await expect(compare).toContainText('Deutschland');
+  await expect(page.locator('.context-map')).not.toHaveClass(/compare/);
+  await compare.click();
+  await expect(page.locator('.context-map')).toHaveClass(/compare/);
+  await expect(compare).toHaveAttribute('aria-pressed', 'true');
+});
