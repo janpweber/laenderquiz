@@ -1,6 +1,6 @@
 // Erzeugt Bilder für die Regionen (Welt und Kontinente) im Stil des Deutschland-Logos:
 // Low-Poly-Dreiecke in Havas-Rottönen. Auf dem „Geschafft“-Bildschirm fliegen die Dreiecke
-// erst wie Konfetti und setzen sich dann zur Karte zusammen. Berlin ist in Welt und Europa schwarz.
+// aus der Mitte wie Konfetti auseinander und setzen sich in einer durchgehenden Bewegung zur Karte zusammen.
 // Umrisse aus Natural Earth 110m (world-atlas, Public Domain), grob genug für kleine Dateien.
 // Ausführen mit: node scripts/build-regions.mjs
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -14,20 +14,18 @@ const countries = JSON.parse(readFileSync(new URL('../src/countries.generated.js
 const geometries = topology.objects.countries.geometries;
 const continentOf = new Map(countries.map((c) => [c.id, c.continent]));
 
-const BERLIN = [13.405, 52.52];
 const W = 400;
 const STEP = 34;
 
 // Länder je Region. Für ein stimmiges Bild kommen ein paar Nachbarn dazu
 // (Russland zu Asien, Türkei zu Europa, Grönland zu Nordamerika); Europa wird auf einen Ausschnitt begrenzt.
 const REGIONS = [
-  { name: 'Welt', ids: () => true, projection: () => geoEqualEarth().rotate([-10, 0]), berlin: true, dropAntarctica: true },
+  { name: 'Welt', ids: () => true, projection: () => geoEqualEarth().rotate([-10, 0]), dropAntarctica: true },
   {
     name: 'Europa',
     ids: (id) => continentOf.get(id) === 'Europa' || ['792', '196', '268', '051', '031'].includes(id),
     projection: () => geoConicConformal().parallels([40, 65]).rotate([-15, 0]),
     box: [[-25, 34], [60, 71.5]],
-    berlin: true,
   },
   { name: 'Asien', ids: (id) => continentOf.get(id) === 'Asien' || id === '643', projection: () => geoAzimuthalEqualArea().rotate([-95, -40]) },
   { name: 'Afrika', ids: (id) => continentOf.get(id) === 'Afrika' || id === '732', projection: () => geoAzimuthalEqualArea().rotate([-18, -2]) },
@@ -48,14 +46,6 @@ const REGIONS = [
 
 const random = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const f = (n) => n.toFixed(1);
-
-function contains([[x1, y1], [x2, y2], [x3, y3]], [px, py]) {
-  const s = (ax, ay, bx, by) => (px - bx) * (ay - by) - (ax - bx) * (py - by);
-  const d1 = s(x1, y1, x2, y2);
-  const d2 = s(x2, y2, x3, y3);
-  const d3 = s(x3, y3, x1, y1);
-  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
-}
 
 function buildGrid(H, rng) {
   const rows = [];
@@ -143,7 +133,6 @@ function build(region) {
     .map((ring) => clipConvex(ring, view))
     .filter((r) => r.length >= 3 && polyArea(r) > 0.3);
 
-  const berlin = region.berlin ? projection(BERLIN) : undefined;
   const tris = buildGrid(H, random(7));
   const colorRng = random(23);
   const pick = () => {
@@ -156,48 +145,46 @@ function build(region) {
   for (const t of tris) {
     const parts = polys.map((ring) => clipConvex(ring, t)).filter((p) => p.length >= 3 && polyArea(p) > 0.4);
     if (!parts.length) continue;
-    const city = berlin && contains(t, berlin);
     const cx = (t[0][0] + t[1][0] + t[2][0]) / 3;
     const cy = (t[0][1] + t[1][1] + t[2][1]) / 3;
-    // Konfetti: aus der Mitte nach oben und zur Seite geschleudert (1), langsam herabtrudeln (2), dann an den Platz
-    const burst = (motion() - 0.5) * Math.PI * 1.1 - Math.PI / 2;
-    const reach = 160 + motion() * 260;
-    const x1 = W / 2 - cx + Math.cos(burst) * reach;
-    const y1 = H * 0.4 - cy + Math.sin(burst) * reach;
-    const x2 = x1 + (motion() - 0.5) * 120;
-    const y2 = y1 + 120 + motion() * 140;
-    const r1 = Math.round((motion() - 0.5) * 900);
-    const r2 = r1 + Math.round((motion() - 0.5) * 540);
+    // Bewegung aus zwei Teilen, die sich überlagern, damit nichts stehen bleibt:
+    // .tri fliegt gleichmäßig von der Mitte an seinen Platz und dreht sich dabei aus,
+    // die Gruppe darum schleudert es zuerst weit nach außen (Explosion) und holt es wieder zurück.
+    // in alle Richtungen, leicht nach unten versetzt: das Bild steht oben auf dem Bildschirm
+    const angle = motion() * Math.PI * 2;
+    const reach = 120 + Math.sqrt(motion()) * 260;
+    const bx = Math.cos(angle) * reach * 1.1;
+    const by = Math.sin(angle) * reach * 0.9 + 70;
+    const r = Math.round((motion() - 0.5) * 1440);
     const d = parts.map((p) => `M${p.map(([px, py]) => `${f(px)},${f(py)}`).join('L')}Z`).join('');
-    const delay = city ? 0.3 : motion() * 0.25;
-    pieces.push({
-      city,
-      svg: `<path class="tri${city ? ' city' : ''}" style="--x0:${f(W / 2 - cx)}px;--y0:${f(H * 0.55 - cy)}px;--x1:${f(x1)}px;--y1:${f(y1)}px;--x2:${f(x2)}px;--y2:${f(y2)}px;--r1:${r1}deg;--r2:${r2}deg;--d:${delay.toFixed(2)}s" d="${d}" fill="${city ? '#000000' : pick()}"/>`,
-    });
+    const delay = motion() * 0.15;
+    pieces.push(
+      `<g class="burst" style="--bx:${f(bx)}px;--by:${f(by)}px;--d:${delay.toFixed(2)}s"><path class="tri" style="--x0:${f(W / 2 - cx)}px;--y0:${f(H * 0.5 - cy)}px;--r:${r}deg;--d:${delay.toFixed(2)}s" d="${d}" fill="${pick()}"/></g>`,
+    );
   }
 
-  const DURATION = 2.2;
+  const DURATION = 1.9;
   const style = `<style>
-.tri { transform-box: fill-box; transform-origin: center; animation: confetti ${DURATION}s cubic-bezier(.3,.6,.35,1) var(--d) both; }
-.city { animation: confetti ${DURATION}s cubic-bezier(.3,.6,.35,1) var(--d) both, pulse 1.6s ease-in-out calc(var(--d) + ${DURATION}s) infinite; }
-@keyframes confetti {
-  0% { transform: translate(var(--x0), var(--y0)) scale(0.2); opacity: 0; }
-  8% { opacity: 1; }
-  30% { transform: translate(var(--x1), var(--y1)) rotate(var(--r1)); }
-  62% { transform: translate(var(--x2), var(--y2)) rotate(var(--r2)); }
-  100% { transform: none; }
+.tri { transform-box: fill-box; transform-origin: center; animation: home ${DURATION}s cubic-bezier(.45,0,.2,1) var(--d) both; }
+.burst { animation: burst ${DURATION}s linear var(--d) both; }
+@keyframes home {
+  0% { transform: translate(var(--x0), var(--y0)) rotate(var(--r)) scale(0.3); opacity: 0; }
+  6% { opacity: 1; }
+  100% { transform: none; opacity: 1; }
 }
-@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
-.still .tri { animation: none; }
-.still .city { animation: pulse 1.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .tri, .city { animation: none; } }
+@keyframes burst {
+  0% { transform: translate(0, 0); animation-timing-function: cubic-bezier(.15,.75,.35,1); }
+  42% { transform: translate(var(--bx), var(--by)); animation-timing-function: cubic-bezier(.55,0,.45,1); }
+  100% { transform: translate(0, 0); }
+}
+.still .tri, .still .burst { animation: none; }
+@media (prefers-reduced-motion: reduce) { .tri, .burst { animation: none; } }
 </style>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" overflow="visible" role="img" aria-label="${region.name} aus Dreiecken">
 ${style}
 <g stroke="#ffffff" stroke-opacity="0.3" stroke-width="0.6">
-${pieces.filter((p) => !p.city).map((p) => p.svg).join('\n')}
+${pieces.join('\n')}
 </g>
-${pieces.filter((p) => p.city).map((p) => p.svg).join('\n')}
 </svg>
 `;
   writeFileSync(new URL(`../src/regions/${region.name}.svg`, import.meta.url), svg);
