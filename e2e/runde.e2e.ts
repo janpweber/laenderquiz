@@ -247,3 +247,36 @@ test('Tempo: Zeit läuft ab, es geht von selbst weiter, danach Antworten durchge
   await expect(page.locator('.region-art')).toHaveClass(/assemble/);
   await expect(page.locator('h1')).toHaveText('Geschafft!');
 });
+
+test('Üben: Fehler wiederholen und Länder der letzten Runde üben', async ({ page }) => {
+  await page.evaluate(() =>
+    localStorage.setItem('laenderquiz:einstellungen', JSON.stringify({ length: 3, continent: 'Europa', difficulty: 'normal', tempo: 0 })),
+  );
+  await page.reload();
+  await expect(page.locator('.card', { hasText: 'Üben' })).toContainText('Fehler und zuletzt gespielte Länder');
+  await page.locator('.card', { hasText: 'Freies Spiel' }).click();
+  await page.locator('.card', { hasText: 'Los geht' }).click();
+  // absichtlich falsch: immer die Antwort, die nicht das gesuchte Land ist
+  let wrong = 0;
+  for (let i = 1; i <= 3; i++) {
+    await expect(page.locator('.status')).toContainText(`Frage ${i}`);
+    await page.locator('.option').nth(1).click();
+    if ((await page.locator('.option.wrong').count()) > 0) wrong++;
+    await page.locator('.next').click();
+  }
+  await expect(page.locator('h1')).toHaveText('Geschafft!');
+  await expect(page.locator('.card', { hasText: 'Diese Länder üben' })).toBeVisible();
+
+  await page.goto('./');
+  await page.locator('.card', { hasText: 'Üben' }).first().click();
+  await expect(page.locator('.card', { hasText: 'Letzte 20 Länder' })).toContainText('3 Länder');
+  const fehler = page.locator('.card', { hasText: 'Meine Fehler' });
+  if (wrong > 0) {
+    await expect(fehler).toContainText(`${wrong} ${wrong === 1 ? 'Land' : 'Länder'}`);
+    await fehler.click();
+    await expect(page.locator('.badge')).toContainText('Üben · Meine Fehler');
+    await expect(page.locator('.status')).toContainText(`von ${wrong}`);
+  } else {
+    await expect(fehler).toBeDisabled();
+  }
+});
