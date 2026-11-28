@@ -31,6 +31,8 @@ drop policy if exists "sperrwoerter lesen" on public.sperrwoerter;
 create policy "sperrwoerter lesen" on public.sperrwoerter for select to anon, authenticated using (true);
 revoke insert, update, delete, truncate on public.sperrwoerter from anon, authenticated;
 grant select on public.sperrwoerter to anon, authenticated;
+-- Für den monatlichen Abgleich (GitHub-Action mit geheimem Schlüssel)
+grant select, insert on public.sperrwoerter to service_role;
 
 -- Name vereinheitlichen: Kleinbuchstaben, Umlaute, Ersatzzeichen (N4zi, $hit);
 -- alles andere wird zu Leerzeichen, damit ganze Wörter erkennbar bleiben
