@@ -101,6 +101,16 @@ export function createRound(countries: Country[], settings: RoundSettings, rng: 
   return { questions, index: 0, score: 0, endless, totalMs: 0, hints: 0, answers: [] };
 }
 
+// Runde mit vorgegebenen Ländern (zum Üben), in neuer Reihenfolge;
+// falsche Antworten kommen aus dem größeren Pool
+export function createRoundFrom(selected: Country[], pool: Country[], rng: Rng = Math.random): Round {
+  const questions = shuffle(selected, rng).map((country) => ({
+    country,
+    options: shuffle([country, ...pickDistractors(country, pool, rng)], rng),
+  }));
+  return { questions, index: 0, score: 0, totalMs: 0, hints: 0, answers: [] };
+}
+
 // Endlosmodus: Runde nach der aktuellen Frage beenden; gewertet wird, was beantwortet ist
 export function endRound(round: Round): Round {
   return { ...round, questions: round.questions.slice(0, round.index) };

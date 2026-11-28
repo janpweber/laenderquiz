@@ -8,6 +8,7 @@ import {
   endRound,
   filterCountries,
   isFinished,
+  createRoundFrom,
   type Country,
   type Question,
   type Round,
@@ -38,6 +39,7 @@ import {
   type Challenge,
   type ChallengeSetup,
 } from './challenge';
+import { loadHistory, mistakes, recentCountries, recordAnswer } from './practice';
 import { TEMPOS, loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -166,10 +168,13 @@ let active: Settings = settings;
 let activeRanked: RankedMode | undefined;
 // Laufende Challenge-Runde: welche Challenge, welcher Versuch, unter welchem Namen
 let activeChallenge: { challenge: Challenge; attempt: number; name: string } | undefined;
+// Laufende Übungsrunde: welche Länder unter welchem Namen (zählt für nichts)
+let activePractice: { label: string; countries: Country[] } | undefined;
 function startRound(s: Settings, ranked?: RankedMode) {
   active = s;
   activeRanked = ranked;
   activeChallenge = undefined;
+  activePractice = undefined;
   showQuestion(createRound(pool(s), { length: s.length }));
 }
 function startRanked(mode: RankedMode) {
@@ -281,6 +286,7 @@ function showStart() {
       map(),
       card('Rangliste', 'trophy', showRanked, 'primary highlight', 'Welt oder Kontinent · mit Bestenliste'),
       card('Freies Spiel', 'play', showSettings, 'secondary', summary(settings, pool(settings).length)),
+      card('Üben', 'again', showPractice, 'secondary', practiceSummary()),
       card('Freunde herausfordern', 'flag', () => showChallengeCreate(), 'secondary', 'Challenge per Link'),
       card('Bestenliste', 'list', () => showLeaderboard(), 'secondary'),
     ]),
@@ -485,12 +491,18 @@ function showQuestion(round: Round) {
   let usedHint = false;
   const challenge = activeChallenge;
   const badge = el('p', { className: 'badge' }, [
-    ranked ? `Rangliste · ${rankedLabel(ranked)}` : challenge ? `Challenge · ${challenge.challenge.titel}` : '',
+    ranked
+      ? `Rangliste · ${rankedLabel(ranked)}`
+      : challenge
+        ? `Challenge · ${challenge.challenge.titel}`
+        : activePractice
+          ? `Üben · ${activePractice.label}`
+          : '',
   ]);
   const hintNote = el('p', { className: 'hint-note' }, ['Mit Hinweis, zählt nicht für die Bestenliste']);
   const showRankedState = (disqualified: boolean) => {
     // Platz behalten, damit beim Aufdecken nichts springt
-    badge.hidden = !ranked && !challenge;
+    badge.hidden = !ranked && !challenge && !activePractice;
     badge.style.visibility = disqualified ? 'hidden' : '';
     hintNote.hidden = !ranked || !disqualified;
   };
@@ -530,6 +542,8 @@ function showQuestion(round: Round) {
     if (!usedHint) flagButton.remove();
     const elapsed = code === null ? limitMs : Math.min(clock.elapsed(), limitMs || Infinity);
     const result = answerQuestion(round, code, elapsed, usedHint);
+    // Verlauf fürs Üben (nur auf diesem Gerät)
+    recordAnswer(browserStore(), question.country.code, result.correct);
     latest = result.round;
     buttons.forEach((button, i) => {
       button.disabled = true;
@@ -581,6 +595,7 @@ function finish(round: Round) {
 
 function showResult(round: Round) {
   if (activeChallenge) return showChallengeResult(round, activeChallenge);
+  if (activePractice) return showPracticeResult(round, activePractice);
   const total = round.questions.length;
   const endless = round.endless === true;
   // Runden mit Hinweis verbessern den Rekord nicht, damit er vergleichbar bleibt
@@ -627,6 +642,7 @@ function showResult(round: Round) {
     activeRanked
       ? card('Andere Rangliste', 'trophy', showRanked, 'secondary')
       : card('Einstellungen', 'settings', showSettings, 'secondary'),
+    practiceCard(round),
     card('Freunde herausfordern', 'flag', () => showChallengeCreate(active), 'secondary', 'Challenge mit diesen Einstellungen'),
   ]);
   app.replaceChildren(screen);
@@ -672,6 +688,85 @@ function showReview(round: Round, i: number, back: () => void) {
       ...(i + 1 < total ? [el('button', { className: 'text-button', onclick: back }, ['Zum Ergebnis'])] : []),
     ]),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Üben: eigene Fehler, zuletzt gespielte Länder, Länder der letzten Runde
+// ---------------------------------------------------------------------------
+
+const byCode = new Map(allCountries.map((c) => [c.code, c as Country]));
+const toCountries = (codes: string[]) => codes.map((c) => byCode.get(c)).filter((c): c is Country => !!c);
+
+function practiceSummary(): string {
+  const open = mistakes(loadHistory(browserStore())).length;
+  return open ? `${open} Fehler zum Wiederholen` : 'Fehler und zuletzt gespielte Länder';
+}
+
+function startPractice(label: string, countries: Country[]) {
+  if (countries.length === 0) return;
+  active = { length: countries.length, continent: 'Welt', difficulty: 'schwer', tempo: 0 };
+  activeRanked = undefined;
+  activeChallenge = undefined;
+  activePractice = { label, countries };
+  showQuestion(createRoundFrom(countries, allCountries));
+}
+
+function practiceCard(round: Round) {
+  const countries = round.questions.slice(0, round.answers.length).map((q) => q.country);
+  return card('Diese Länder üben', 'again', () => startPractice('Diese Länder', countries), 'secondary', 'Gleiche Länder, neue Reihenfolge, zählt nicht');
+}
+
+function showPractice() {
+  const history = loadHistory(browserStore());
+  const open = toCountries(mistakes(history));
+  const last20 = toCountries(recentCountries(history, 20));
+  const last50 = toCountries(recentCountries(history, 50));
+  const option = (label: string, countries: Country[], className: string, empty: string) =>
+    countries.length
+      ? card(label, 'play', () => startPractice(label, countries), className, `${countries.length} ${countries.length === 1 ? 'Land' : 'Länder'}`)
+      : card(label, 'play', () => {}, `${className} disabled`, empty);
+  const cards = [
+    option('Meine Fehler', open, 'primary', history.length ? 'Gerade keine offenen Fehler' : 'Noch nichts gespielt'),
+    option('Letzte 20 Länder', last20, 'secondary', 'Noch nichts gespielt'),
+    option('Letzte 50 Länder', last50, 'secondary', 'Noch nichts gespielt'),
+  ];
+  cards.forEach((c) => c.classList.contains('disabled') && (c.disabled = true));
+  app.replaceChildren(
+    el('section', { className: 'screen practice' }, [
+      el('p', { className: 'kicker' }, ['Üben']),
+      el('h1', {}, ['Wiederholen hilft']),
+      el('p', { className: 'lead' }, [
+        'Übungsrunden zählen nicht für Rekord und Bestenliste. Ein Fehler gilt als gelernt, wenn du das Land zweimal hintereinander richtig hattest.',
+      ]),
+      ...cards,
+      el('button', { className: 'text-button', onclick: showStart }, ['Zurück']),
+    ]),
+  );
+}
+
+function showPracticeResult(round: Round, current: NonNullable<typeof activePractice>) {
+  const total = round.questions.length;
+  const open = mistakes(loadHistory(browserStore()));
+  const back = () => {
+    screen.querySelector('.region-art')?.classList.add('assemble');
+    app.replaceChildren(screen);
+  };
+  const screen = el('section', { className: 'screen result' }, [
+    withClass(regionArt('Welt'), 'small'),
+    el('p', { className: 'kicker' }, [`Üben · ${current.label}`]),
+    el('h1', {}, ['Geschafft!']),
+    el('p', { className: 'score' }, [`${round.score} von ${total}`]),
+    el('p', { className: 'lead' }, [open.length
+        ? `Noch ${open.length} Fehler offen. Zweimal hintereinander richtig, dann gilt ein Land als gelernt.`
+        : 'Keine offenen Fehler mehr!']),
+    card('Antworten durchgehen', 'list', () => showReview(round, 0, back), 'secondary', 'Karte, Flagge und deine Antwort'),
+    ...(open.length
+      ? [card('Meine Fehler üben', 'again', () => startPractice('Meine Fehler', toCountries(open)), 'primary', `${open.length} Länder`)]
+      : []),
+    card('Nochmal dieselben Länder', 'again', () => startPractice(current.label, current.countries), 'secondary'),
+    card('Zum Start', 'arrow', showStart, 'secondary'),
+  ]);
+  app.replaceChildren(screen);
 }
 
 // ---------------------------------------------------------------------------
@@ -935,6 +1030,7 @@ function showChallengeResult(round: Round, current: NonNullable<typeof activeCha
     ...(left > 0
       ? [card('Nächster Versuch', 'again', () => startChallenge(challenge, name), 'secondary', left === 1 ? 'Dein letzter Versuch' : `Noch ${left} Versuche`)]
       : []),
+    practiceCard(round),
     card('Challenge teilen', 'flag', () => shareChallenge(challenge, status), 'secondary'),
     card('Frei weiterspielen', 'play', () => {
       settings = { ...challengeSettings(challenge) };
