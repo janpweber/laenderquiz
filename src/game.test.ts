@@ -169,3 +169,17 @@ describe('Einstellungen', () => {
     expect(round.score).toBe(1);
   });
 });
+
+describe('Antworten für die Durchsicht', () => {
+  const countries = Array.from({ length: 8 }, (_, i) => ({ code: `L${i}`, name: `Land ${i}`, path: '' }));
+  it('merkt sich jede Antwort, null bei abgelaufener Zeit', () => {
+    let round = createRound(countries, { length: 3 }, () => 0.3);
+    const first = round.questions[0].country.code;
+    round = answerQuestion(round, first, 1000).round;
+    const timeout = answerQuestion(round, null, 2000);
+    expect(timeout.correct).toBe(false);
+    expect(timeout.round.answers).toEqual([first, null]);
+    expect(timeout.round.totalMs).toBe(3000);
+    expect(timeout.round.score).toBe(1);
+  });
+});

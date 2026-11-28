@@ -463,3 +463,18 @@ button {
   .context-map.reveal .sea, .context-map.reveal .land, .context-map.reveal .wrong, .stage .size-compare { animation: none; }
   .context-map .marker { transition: none; }
 }
+
+/* Tempo: Balken unter dem Umriss läuft in der eingestellten Zeit ab */
+.countdown { height: 6px; background: #d4d4d4; border-radius: 3px; overflow: hidden; }
+.countdown-bar { height: 100%; background: var(--red); transform-origin: left; animation: countdown linear both; }
+.countdown.stopped .countdown-bar { animation-play-state: paused; }
+@keyframes countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* Durchsicht nach der Runde */
+.review .status .good { color: var(--red); }
+.review .status .bad { color: var(--black); }
+.review-answer { text-align: center; }
+.review-answer p { margin: 0; }
+.review-country { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; }
+.review-yours { font-weight: 700; color: var(--grey-dark); }
+.review-nav { display: flex; justify-content: space-between; align-items: center; }
