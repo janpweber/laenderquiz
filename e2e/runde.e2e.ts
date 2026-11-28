@@ -58,6 +58,9 @@ test('Ranglisten-Runde Welt durchspielen und eintragen', async ({ page }) => {
   await expect(page.locator('.score')).toContainText('von 10');
   await expect(page.locator('.time')).toContainText('Zeit:');
   await expect(page.locator('.record')).toBeVisible();
+  // nach der Rangliste: andere Rangliste und Zum Start (als letzte Karte)
+  await expect(page.locator('.result .card', { hasText: 'Andere Rangliste' })).toBeVisible();
+  await expect(page.locator('.result > .card').last()).toContainText('Zum Start');
 
   // gesperrter Name wird schon im Browser abgelehnt
   await page.locator('.entry input').fill('F.u.c.k');
@@ -160,6 +163,11 @@ test('freies Spiel zählt nie für die Bestenliste, auch mit Ranglisten-Einstell
   await answerAll(page, 10);
   await expect(page.locator('.result')).toContainText('nur Ranglisten-Runden');
   await expect(page.locator('.entry input')).toHaveCount(0);
+  // vom Ergebnis zurück zum Start (dort gibt es die Rangliste), Einstellungen nicht mehr hier
+  await expect(page.locator('.result .card .label', { hasText: /^Einstellungen/ })).toHaveCount(0);
+  await expect(page.locator('.result > .card').last()).toContainText('Zum Start');
+  await page.locator('.card', { hasText: 'Zum Start' }).click();
+  await expect(page.locator('.start')).toBeVisible();
 });
 
 test('nach der Antwort: Flagge und Karte erscheinen von selbst, ohne als Hinweis zu zählen', async ({ page }) => {

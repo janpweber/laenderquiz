@@ -714,11 +714,11 @@ function showResult(round: Round) {
     ...(round.answers.length > 0
       ? [card('Antworten durchgehen', 'list', () => showReview(round, 0, back), 'secondary', 'Karte, Flagge und deine Antwort')]
       : []),
-    activeRanked
-      ? card('Andere Rangliste', 'trophy', showRanked, 'secondary')
-      : card('Einstellungen', 'settings', showSettings, 'secondary'),
+    // Freies Spiel: kein Weg zu den Einstellungen mehr, die liegen vom Start einen Tipp entfernt
+    ...(activeRanked ? [card('Andere Rangliste', 'trophy', showRanked, 'secondary')] : []),
     practiceCard(round),
     card('Freunde herausfordern', 'flag', () => showChallengeCreate(active), 'secondary', 'Challenge mit diesen Einstellungen'),
+    card('Zum Start', 'arrow', showStart, 'secondary'),
   ]);
   app.replaceChildren(screen);
 }
