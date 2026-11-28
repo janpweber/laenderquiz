@@ -55,3 +55,12 @@ Ziel und Umsetzungsschritte stehen in [docs/prd](docs/prd/laenderquiz.md).
 ## Challenges
 
 Über „Challenge erstellen“ legt man Bedingungen fest (Region, Anzahl, Tempo, gleiche Länder, Versuche) und teilt einen Link `…/laenderquiz/?c=<id>`. Gespeichert wird in den Supabase-Tabellen `challenges` und `challenge_ergebnisse`. Dafür muss `supabase/schema.sql` einmal (erneut) im SQL Editor ausgeführt werden; das Skript ist idempotent und lässt die Bestenliste unverändert. Löschen geht im Table Editor, beim Löschen einer Challenge verschwinden ihre Ergebnisse mit.
+
+## Sperrwörter
+
+Gesperrte Wörter für Namen und Challenge-Titel stehen in der Supabase-Tabelle `sperrwoerter` (App und Datenbank-Prüfung lesen beide daraus):
+- `kern`: kleine Grundliste, geprüft als Teilwort. Dieselben Wörter stehen als Rückfall in `src/name.ts`.
+- `ldnoobw-de`, `ldnoobw-en`: offene Liste [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) (CC BY 4.0), geprüft nur als ganzes Wort.
+- Ein Wort freigeben: im Table Editor `aktiv` auf `false` setzen, nicht löschen (sonst kommt es beim nächsten Abgleich zurück).
+
+Die GitHub-Action „Sperrwörter abgleichen“ ergänzt die Liste am 1. jedes Monats (auch manuell startbar unter Actions). Sie braucht die Repository-Secrets `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API Keys → secret/service_role). Dieser Schlüssel darf nur als Secret hinterlegt werden, nie im Code.

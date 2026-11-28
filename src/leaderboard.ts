@@ -1,3 +1,5 @@
+import { setBlockedWords, type BlockedWord } from './name';
+
 // Online-Bestenliste in Supabase, direkt über die REST-Schnittstelle (PostgREST).
 // Der Publishable Key ist öffentlich und darf im Frontend stehen; Schutz geben
 // Row Level Security und die Constraints in supabase/schema.sql.
@@ -89,5 +91,19 @@ export async function submitEntry(entry: Entry, fragen: number, fetchFn: Fetch =
     return Number.isFinite(total) ? total + 1 : 0;
   } catch {
     return 0; // Eintrag hat geklappt, nur der Platz ist unbekannt
+  }
+}
+
+// Sperrwörter aus der Datenbank laden (einmal pro Besuch). Ohne Netz gilt die Grundliste
+// aus name.ts; die Datenbank prüft beim Eintragen ohnehin selbst.
+let blockedWordsLoaded = false;
+export async function loadBlockedWords(fetchFn: Fetch = fetch): Promise<void> {
+  if (blockedWordsLoaded) return;
+  blockedWordsLoaded = true;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/sperrwoerter?select=wort,ganzes_wort&aktiv=is.true&limit=5000`;
+    setBlockedWords((await (await request(fetchFn, url)).json()) as BlockedWord[]);
+  } catch {
+    blockedWordsLoaded = false; // beim nächsten Mal neu versuchen
   }
 }

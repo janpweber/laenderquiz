@@ -49,6 +49,31 @@ export function normalizeForFilter(name: string): string {
     .replace(/[^a-z]/g, '');
 }
 
+// Wie oben, aber Trennzeichen bleiben als Leerzeichen, damit ganze Wörter erkennbar sind
+export function wordsForFilter(name: string): string[] {
+  return name
+    .split(/[^\p{L}\p{N}@$!|]+/u)
+    .map(normalizeForFilter)
+    .filter(Boolean);
+}
+
+// Zusätzliche Sperrwörter aus der Datenbank (Tabelle sperrwoerter), siehe loadBlockedWords
+export interface BlockedWord {
+  wort: string;
+  ganzes_wort: boolean;
+}
+let blocked: BlockedWord[] = [];
+export function setBlockedWords(words: BlockedWord[]): void {
+  blocked = words.filter((w) => typeof w?.wort === 'string' && /^[a-z]{2,40}$/.test(w.wort));
+}
+
+function isBlocked(name: string): boolean {
+  const joined = normalizeForFilter(name);
+  if (BLOCKLIST.some((word) => joined.includes(word))) return true;
+  const words = wordsForFilter(name);
+  return blocked.some((w) => (w.ganzes_wort ? w.wort === joined || words.includes(w.wort) : joined.includes(w.wort)));
+}
+
 export type NameCheck = { ok: true; name: string } | { ok: false; message: string };
 
 // max und Bezeichnung anpassbar, z. B. für den Titel einer Challenge
@@ -56,8 +81,7 @@ export function checkName(input: string, max = NAME_MAX, what = 'Name'): NameChe
   const name = input.trim().replace(/\s+/g, ' ');
   if (name.length === 0) return { ok: false, message: `Bitte gib einen ${what} ein.` };
   if ([...name].length > max) return { ok: false, message: `Der ${what} darf höchstens ${max} Zeichen haben.` };
-  const normalized = normalizeForFilter(name);
-  if (BLOCKLIST.some((word) => normalized.includes(word)))
+  if (isBlocked(name))
     return { ok: false, message: 'Dieser Name geht leider nicht. Bitte wähle einen anderen.' };
   return { ok: true, name };
 }

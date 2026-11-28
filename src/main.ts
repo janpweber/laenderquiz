@@ -17,7 +17,7 @@ import { contextMap, enableGestures, preloadWorld, sizeComparison, zoomOut } fro
 import { formatTime, startQuestionClock } from './timer';
 import { browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
 import { RANKED, rankedLabel, rankedSettings, type RankedMode } from './ranked';
-import { LeaderboardError, fetchTop, plausible, submitEntry } from './leaderboard';
+import { LeaderboardError, fetchTop, loadBlockedWords, plausible, submitEntry } from './leaderboard';
 import { NAME_MAX, checkName } from './name';
 import { flagUrl } from './flags';
 import {
@@ -325,6 +325,7 @@ function leaderboardEntry(round: Round): HTMLElement {
   if (!plausible(round.score, round.totalMs, mode.length))
     return el('p', { className: 'hint center' }, ['Diese Runde war zu schnell für die Bestenliste.']);
 
+  loadBlockedWords();
   const input = el('input', {
     type: 'text',
     value: rememberedName(),
@@ -698,6 +699,7 @@ function showChallengeCreate(from?: Settings) {
     gleich: true,
     versuche: 1 as number,
   };
+  loadBlockedWords();
   const title = textInput('Länder-Challenge', 'Name der Challenge', 'Name der Challenge', TITLE_MAX);
   const name = textInput(rememberedName(), 'Dein Name', 'Dein Name', NAME_MAX);
   const message = el('p', { className: 'form-message', ariaLive: 'polite' });
@@ -863,6 +865,7 @@ function showChallengeInvite(challenge: Challenge) {
   history.replaceState(null, '', `?c=${challenge.id}`);
   const used = attemptsUsed(browserStore(), challenge.id);
   const left = challenge.versuche - used;
+  loadBlockedWords();
   const name = textInput(rememberedName(), 'Dein Name', 'Dein Name für die Rangliste', NAME_MAX);
   const message = el('p', { className: 'form-message', ariaLive: 'polite' });
   const start = () => {
