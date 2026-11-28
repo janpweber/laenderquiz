@@ -381,7 +381,17 @@ function showQuestion(round: Round) {
       zoomOut(map, 500, 150);
       enableGestures(map);
       if (map.dataset.ratio) {
-        stage.append(el('p', { className: 'size-compare' }, [sizeComparison(Number(map.dataset.ratio))]));
+        // Zahl immer, Deutschland-Silhouette nur auf Tipp, damit die Karte ruhig bleibt
+        const compare = el('button', { className: 'size-compare', ariaLabel: 'Deutschland zum Vergleich einblenden' }, [
+          el('span', { className: 'icon-de' }),
+          sizeComparison(Number(map.dataset.ratio)),
+        ]);
+        compare.setAttribute('aria-pressed', 'false');
+        compare.onclick = () => {
+          const on = map.classList.toggle('compare');
+          compare.setAttribute('aria-pressed', String(on));
+        };
+        stage.append(compare);
       }
     } catch {
       // ohne Netz bleibt einfach der Umriss stehen

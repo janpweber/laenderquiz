@@ -283,18 +283,26 @@ button {
 .context-map .wrong { fill: #3a3a3a; stroke: var(--white); stroke-width: 0.8px; }
 .context-map .wrong-marker { stroke: #3a3a3a; }
 /* Deutschland zum Größenvergleich: nur gestrichelte Linie, damit das Land darunter sichtbar bleibt */
-.context-map .germany { fill: none; stroke: var(--black); stroke-width: 1.5px; stroke-dasharray: 4 3; }
+.context-map .germany { fill: none; stroke: var(--black); stroke-width: 1.5px; stroke-dasharray: 4 3; opacity: 0; transition: opacity 0.2s ease-out; }
+.context-map.compare .germany { opacity: 1; }
 .size-compare {
   position: absolute;
   left: 10px;
   bottom: 10px;
   margin: 0;
-  padding: 3px 8px;
+  padding: 7px 10px;
   background: rgba(255, 255, 255, 0.9);
+  border: 0;
+  border-radius: 0;
+  color: var(--black);
+  font: inherit;
   font-size: 0.75rem;
   font-weight: 800;
-  pointer-events: none;
+  cursor: pointer;
 }
+.size-compare .icon-de { display: inline-block; margin-right: 4px; border-bottom: 2px dashed var(--black); width: 14px; vertical-align: middle; }
+.size-compare[aria-pressed='true'] { background: var(--black); color: var(--white); }
+.size-compare[aria-pressed='true'] .icon-de { border-color: var(--white); }
 
 .time { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
 
@@ -445,12 +453,12 @@ button {
 .context-map.reveal .sea,
 .context-map.reveal .land, .context-map.reveal .wrong { animation: context-in 0.15s ease-out both; }
 /* Größenvergleich erst nach dem Herauszoomen einblenden */
-.context-map.reveal .germany, .stage .size-compare { animation: context-in 0.25s ease-out 0.6s both; }
+.stage .size-compare { animation: context-in 0.25s ease-out 0.6s both; }
 /* Ringe um winzige Länder nur weit herausgezoomt zeigen, sonst wirken sie riesig */
 .context-map .marker { transition: opacity 0.2s ease-out; }
 .context-map .marker.away { opacity: 0; }
 @keyframes context-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .context-map.reveal .sea, .context-map.reveal .land, .context-map.reveal .wrong, .context-map.reveal .germany, .stage .size-compare { animation: none; }
+  .context-map.reveal .sea, .context-map.reveal .land, .context-map.reveal .wrong, .stage .size-compare { animation: none; }
   .context-map .marker { transition: none; }
 }
