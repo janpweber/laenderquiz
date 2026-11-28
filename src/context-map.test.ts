@@ -57,3 +57,18 @@ describe('sizeComparison', () => {
     expect(sizeComparison(1.02)).toBe('etwa so groß wie Deutschland');
   });
 });
+
+describe('Krim', () => {
+  it('gehört in den Kartendaten zur Ukraine', async () => {
+    const { ukrainianCrimea } = await import('./crimea.js');
+    const { feature } = await import('topojson-client');
+    const { geoBounds, geoContains } = await import('d3-geo');
+    const atlas = (await import('world-atlas/countries-50m.json')).default as any;
+    const fixed = ukrainianCrimea(atlas) as any;
+    const byId = (id: string) => (feature(fixed, fixed.objects.countries) as any).features.find((f: any) => f.id === id);
+    const simferopol: [number, number] = [34.1, 44.95];
+    expect(geoContains(byId('804'), simferopol)).toBe(true);
+    expect(geoContains(byId('643'), simferopol)).toBe(false);
+    expect(geoBounds(byId('804'))[0][1]).toBeLessThan(44.5);
+  });
+});
