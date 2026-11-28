@@ -1,7 +1,7 @@
 import schema from '../supabase/schema.sql?raw';
 import { describe, expect, it } from 'vitest';
-import { LeaderboardError, compareEntries, fetchTop, plausible, submitEntry, type Entry } from './leaderboard';
-import { BLOCKLIST, checkName } from './name';
+import { LeaderboardError, compareEntries, fetchTop, loadBlockedWords, plausible, submitEntry, type Entry } from './leaderboard';
+import { BLOCKLIST, checkName, setBlockedWords } from './name';
 import { RANKED, rankedFor } from './ranked';
 
 describe('Ranglisten', () => {
@@ -105,5 +105,34 @@ describe('Bestenliste', () => {
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ modus: 'Südamerika', name: 'Jan', richtige: 4, zeit_ms: 30_000 });
     expect(calls[1].url).toContain('modus=eq.S%C3%BCdamerika');
     expect(calls[1].url).toContain('or=(richtige.gt.4,and(richtige.eq.4,zeit_ms.lt.30000))');
+  });
+});
+
+describe('Sperrwörter aus der Datenbank', () => {
+  it('prüft geladene Wörter als ganzes Wort, die Grundliste als Teilwort', async () => {
+    const fetchFn = (async () =>
+      new Response(
+        JSON.stringify([
+          { wort: 'anal', ganzes_wort: true },
+          { wort: 'nackt', ganzes_wort: true },
+          { wort: 'kacke', ganzes_wort: false },
+          { wort: 'Kaputt!', ganzes_wort: true },
+        ]),
+        { status: 200 },
+      )) as typeof fetch;
+    await loadBlockedWords(fetchFn);
+    expect(checkName('Analena')).toMatchObject({ ok: true });
+    expect(checkName('Anal King')).toMatchObject({ ok: false });
+    expect(checkName('A.n.a.l')).toMatchObject({ ok: false });
+    expect(checkName('N4ckt')).toMatchObject({ ok: false });
+    expect(checkName('Superkacke')).toMatchObject({ ok: false });
+    expect(checkName('Superfuck')).toMatchObject({ ok: false });
+    expect(checkName('Jan')).toMatchObject({ ok: true });
+    setBlockedWords([]);
+  });
+
+  it('die Datenbank kennt die Spalten für ganze Wörter und Abschalten', () => {
+    expect(schema).toContain('ganzes_wort boolean');
+    expect(schema).toContain('aktiv boolean');
   });
 });

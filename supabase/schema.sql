@@ -2,27 +2,70 @@
 -- Einmal im Supabase-Dashboard ausführen: SQL Editor → New query → einfügen → Run.
 -- Das Skript lässt sich gefahrlos mehrfach ausführen.
 
--- Sperrliste für Namen. Dieselben Wörter stehen in src/name.ts.
-create or replace function public.bestenliste_name_ok(n text)
-returns boolean
+-- Sperrwörter für Namen und Titel. Stehen in einer Tabelle statt im Code:
+-- - quelle 'kern': kleine Grundliste (auch in src/name.ts), geprüft als Teilwort („Superfuck“)
+-- - quelle 'ldnoobw-de' / 'ldnoobw-en': offene Liste von github.com/LDNOOBW (CC BY 4.0),
+--   monatlich per GitHub-Action ergänzt, geprüft nur als ganzes Wort („Analena“ bleibt erlaubt)
+-- Ein Wort nicht mehr sperren: im Table Editor aktiv = false setzen (nicht löschen,
+-- sonst trägt der nächste Abgleich es wieder ein).
+create table if not exists public.sperrwoerter (
+  wort text primary key check (wort ~ '^[a-z]{2,40}$'),
+  ganzes_wort boolean not null default true,
+  aktiv boolean not null default true,
+  quelle text not null default 'manuell',
+  created_at timestamptz not null default now()
+);
+
+insert into public.sperrwoerter (wort, ganzes_wort, quelle)
+select wort, false, 'kern'
+from unnest(array[
+  'arschloch', 'wichser', 'hurensohn', 'fotze', 'schlampe', 'missgeburt', 'spast',
+  'hitler', 'heilhitler', 'siegheil', 'judensau', 'kanake', 'neger', 'nigger', 'nigga',
+  'schwuchtel', 'fick', 'fuck', 'cunt', 'bitch', 'whore', 'faggot', 'retard',
+  'penis', 'vagina', 'pimmel', 'muschi', 'titten', 'porn'
+]) as wort
+on conflict (wort) do nothing;
+
+alter table public.sperrwoerter enable row level security;
+drop policy if exists "sperrwoerter lesen" on public.sperrwoerter;
+create policy "sperrwoerter lesen" on public.sperrwoerter for select to anon, authenticated using (true);
+revoke insert, update, delete, truncate on public.sperrwoerter from anon, authenticated;
+grant select on public.sperrwoerter to anon, authenticated;
+
+-- Name vereinheitlichen: Kleinbuchstaben, Umlaute, Ersatzzeichen (N4zi, $hit);
+-- alles andere wird zu Leerzeichen, damit ganze Wörter erkennbar bleiben
+create or replace function public.name_normalisiert(n text)
+returns text
 language sql
 immutable
 as $$
+  select btrim(regexp_replace(
+    translate(
+      replace(replace(replace(replace(lower(n), 'ä', 'ae'), 'ö', 'oe'), 'ü', 'ue'), 'ß', 'ss'),
+      '0134578@$!|', 'oieastbasii'
+    ),
+    '[^a-z]+', ' ', 'g'
+  ));
+$$;
+
+-- true, wenn der Name kein gesperrtes Wort enthält
+create or replace function public.bestenliste_name_ok(n text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with norm as (select public.name_normalisiert(n) as s),
+  teile as (select regexp_split_to_table((select s from norm), ' ') as teil)
   select not exists (
     select 1
-    from unnest(array[
-      'arschloch', 'wichser', 'hurensohn', 'fotze', 'schlampe', 'missgeburt', 'spast',
-      'hitler', 'heilhitler', 'siegheil', 'judensau', 'kanake', 'neger', 'nigger', 'nigga',
-      'schwuchtel', 'fick', 'fuck', 'cunt', 'bitch', 'whore', 'faggot', 'retard',
-      'penis', 'vagina', 'pimmel', 'muschi', 'titten', 'porn'
-    ]) as wort
-    where position(wort in regexp_replace(
-      translate(
-        replace(replace(replace(replace(lower(n), 'ä', 'ae'), 'ö', 'oe'), 'ü', 'ue'), 'ß', 'ss'),
-        '0134578@$!|', 'oieastbasii'
-      ),
-      '[^a-z]', '', 'g'
-    )) > 0
+    from public.sperrwoerter w, norm
+    where w.aktiv
+      and (
+        (not w.ganzes_wort and position(w.wort in replace(norm.s, ' ', '')) > 0)
+        or (w.ganzes_wort and (w.wort = replace(norm.s, ' ', '') or w.wort in (select teil from teile)))
+      )
   );
 $$;
 

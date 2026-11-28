@@ -1,0 +1,25 @@
+name: Sperrwörter abgleichen
+
+# Einmal im Monat neue Wörter aus der offenen Liste LDNOOBW in Supabase ergänzen.
+# Braucht die Repository-Secrets SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY
+# (Settings → Secrets and variables → Actions). Ohne Secrets läuft nur ein Probelauf.
+on:
+  schedule:
+    - cron: '17 4 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/sync-sperrwoerter.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
