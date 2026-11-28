@@ -31,8 +31,8 @@ for (const list of LISTS) {
 }
 console.log(`${rows.size} Wörter aus ${LISTS.join(', ')}`);
 
-const url = process.env.SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const url = process.env.SUPABASE_URL?.trim().replace(/\/+$/, '');
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 if (!url || !key) {
   console.log('Kein SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY gesetzt: Probelauf, nichts eingetragen.');
   process.exit(0);
@@ -41,7 +41,8 @@ const response = await fetch(`${url}/rest/v1/sperrwoerter?on_conflict=wort`, {
   method: 'POST',
   headers: {
     apikey: key,
-    Authorization: `Bearer ${key}`,
+    // Neue Supabase-Schlüssel (sb_secret_…) gehören nur in „apikey“, alte JWT-Schlüssel (service_role) auch in Authorization
+    ...(key.startsWith('sb_') ? {} : { Authorization: `Bearer ${key}` }),
     'Content-Type': 'application/json',
     // vorhandene Wörter nicht anfassen, damit deaktivierte deaktiviert bleiben
     Prefer: 'resolution=ignore-duplicates,return=representation',
