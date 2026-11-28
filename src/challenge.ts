@@ -182,4 +182,110 @@ export function useAttempt(store: Store | undefined, id: string): number {
   return next;
 }
 
+// Meine Challenges: welche Challenges dieses Gerät erstellt oder geöffnet hat
+export interface KnownChallenge {
+  id: string;
+  eigene: boolean;
+  at: number;
+}
+const KNOWN_KEY = 'laenderquiz:challenges';
+export const KNOWN_MAX = 50;
+
+export function knownChallenges(store: Store | undefined): KnownChallenge[] {
+  try {
+    const list = JSON.parse(store?.getItem(KNOWN_KEY) ?? '[]') as unknown;
+    if (!Array.isArray(list)) return [];
+    return list.filter(
+      (k): k is KnownChallenge =>
+        !!k && typeof k.id === 'string' && ID_PATTERN.test(k.id) && typeof k.eigene === 'boolean' && typeof k.at === 'number',
+    );
+  } catch {
+    return [];
+  }
+}
+
+// Neu Gemerktes kommt nach vorne; einmal selbst erstellt bleibt selbst erstellt
+export function rememberChallenge(store: Store | undefined, id: string, eigene = false, now = Date.now()): KnownChallenge[] {
+  if (!ID_PATTERN.test(id)) return knownChallenges(store);
+  const known = knownChallenges(store);
+  const before = known.find((k) => k.id === id);
+  const next = [{ id, eigene: eigene || !!before?.eigene, at: now }, ...known.filter((k) => k.id !== id)].slice(0, KNOWN_MAX);
+  try {
+    store?.setItem(KNOWN_KEY, JSON.stringify(next));
+  } catch {
+    // ohne Speicher bleibt die Liste leer
+  }
+  return next;
+}
+
+// Challenges, die vor „Meine Challenges“ gespielt wurden, stecken in den Versuchs-Einträgen
+export function idsFromAttemptKeys(keys: string[]): string[] {
+  const prefix = attemptsKey('');
+  return keys.filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length)).filter((id) => ID_PATTERN.test(id));
+}
+
+const UUID_PATTERN = /^[0-9a-f-]{36}$/i;
+
+// Challenge-IDs, für die dieses Gerät schon Ergebnisse eingetragen hat (auch von früher)
+export async function playedChallengeIds(spieler: string, fetchFn: Fetch = fetch): Promise<string[]> {
+  if (!UUID_PATTERN.test(spieler)) return [];
+  const rows = (await (await request(fetchFn, `${RESULTS}?select=challenge_id&spieler=eq.${spieler}&limit=1000`)).json()) as {
+    challenge_id: string;
+  }[];
+  return [...new Set(rows.map((r) => r.challenge_id))].filter((id) => ID_PATTERN.test(id));
+}
+
+export async function fetchChallenges(ids: string[], fetchFn: Fetch = fetch): Promise<Challenge[]> {
+  const valid = ids.filter((id) => ID_PATTERN.test(id));
+  if (valid.length === 0) return [];
+  const url = `${CHALLENGES}?select=id,titel,ersteller,region,laender,tempo,versuche,fragen,created_at&id=in.(${valid.join(',')})`;
+  return ((await (await request(fetchFn, url)).json()) as unknown[]).filter(validChallenge);
+}
+
+export async function fetchAllResults(ids: string[], fetchFn: Fetch = fetch): Promise<ChallengeResult[]> {
+  const valid = ids.filter((id) => ID_PATTERN.test(id));
+  if (valid.length === 0) return [];
+  const url = `${RESULTS}?select=challenge_id,spieler,name,versuch,richtige,zeit_ms,created_at&challenge_id=in.(${valid.join(',')})&limit=10000`;
+  return (await (await request(fetchFn, url)).json()) as ChallengeResult[];
+}
+
+export interface ChallengeStatus {
+  challenge: Challenge;
+  eigene: boolean;
+  left: number;
+  best?: ChallengeResult;
+  rank?: number;
+  players: number;
+}
+
+// Offen: noch Versuche übrig. Gespielt: alle Versuche verbraucht. Reihenfolge wie gemerkt, neueste zuerst.
+export function overview(
+  known: KnownChallenge[],
+  challenges: Challenge[],
+  results: ChallengeResult[],
+  me: string,
+  used: (id: string) => number,
+): { offen: ChallengeStatus[]; gespielt: ChallengeStatus[] } {
+  const byId = new Map(challenges.map((c) => [c.id, c]));
+  const offen: ChallengeStatus[] = [];
+  const gespielt: ChallengeStatus[] = [];
+  for (const k of known) {
+    const challenge = byId.get(k.id);
+    if (!challenge) continue;
+    const board = bestPerPlayer(results.filter((r) => r.challenge_id === k.id));
+    const i = board.findIndex((r) => r.spieler === me);
+    const playedAttempts = new Set(results.filter((r) => r.challenge_id === k.id && r.spieler === me).map((r) => r.versuch)).size;
+    const left = Math.max(0, challenge.versuche - Math.max(used(k.id), playedAttempts));
+    const status: ChallengeStatus = {
+      challenge,
+      eigene: k.eigene,
+      left,
+      players: board.length,
+      ...(i >= 0 ? { best: board[i], rank: i + 1 } : {}),
+    };
+    (left > 0 ? offen : gespielt).push(status);
+  }
+  return { offen, gespielt };
+}
+
 export { LeaderboardError };
