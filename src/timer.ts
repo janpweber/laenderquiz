@@ -3,13 +3,28 @@
 export type Clock = () => number;
 
 export interface QuestionClock {
-  // vergangene Zeit seit Fragebeginn
+  // vergangene Zeit seit Fragebeginn, ohne Pausen
   elapsed(): number;
+  // z. B. während der Rückfrage beim Abbrechen einer Challenge
+  pause(): void;
+  resume(): void;
 }
 
 export function startQuestionClock(now: Clock): QuestionClock {
   const start = now();
-  return { elapsed: () => Math.max(0, now() - start) };
+  let paused = 0;
+  let pausedAt: number | null = null;
+  return {
+    elapsed: () => Math.max(0, (pausedAt ?? now()) - start - paused),
+    pause: () => {
+      if (pausedAt === null) pausedAt = now();
+    },
+    resume: () => {
+      if (pausedAt === null) return;
+      paused += now() - pausedAt;
+      pausedAt = null;
+    },
+  };
 }
 
 // Gesamtzeit für den Ergebnis-Bildschirm, z. B. „42,3 s“ oder „1:05,0 min“

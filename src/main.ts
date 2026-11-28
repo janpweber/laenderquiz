@@ -476,6 +476,31 @@ async function mountContext(stage: HTMLElement, shape: Element, question: Questi
 // Pause nach der Antwort im Tempo-Modus
 const AUTO_NEXT_MS = 1500;
 
+// setTimeout, das sich anhalten lässt (Rückfrage beim Abbrechen einer Challenge)
+function pausableTimeout(fn: () => void, ms: number) {
+  let remaining = ms;
+  let startedAt = performance.now();
+  let id: ReturnType<typeof setTimeout> | undefined = setTimeout(fn, remaining);
+  return {
+    pause() {
+      if (id === undefined) return;
+      clearTimeout(id);
+      id = undefined;
+      remaining -= performance.now() - startedAt;
+    },
+    resume() {
+      if (id !== undefined) return;
+      startedAt = performance.now();
+      id = setTimeout(fn, Math.max(0, remaining));
+    },
+    clear() {
+      clearTimeout(id);
+      id = undefined;
+      remaining = Infinity;
+    },
+  };
+}
+
 function showQuestion(round: Round) {
   if (isFinished(round)) return showResult(round);
   const question = currentQuestion(round)!;
@@ -547,10 +572,44 @@ function showQuestion(round: Round) {
   const countdownBar = el('div', { className: 'countdown-bar' });
   countdown.append(countdownBar);
   if (limitMs) countdownBar.style.animationDuration = `${limitMs}ms`;
-  const timeout = limitMs ? setTimeout(() => stage.isConnected && choose(null), limitMs) : undefined;
+  const timeout = limitMs ? pausableTimeout(() => stage.isConnected && choose(null), limitMs) : undefined;
+  let autoNext: ReturnType<typeof pausableTimeout> | undefined;
+
+  // Abbrechen: außer im Endlosmodus (dort gibt es „Runde beenden“) und nach der letzten Antwort
+  const abort = el('button', { className: 'text-button abort', onclick: () => (challenge ? confirmAbort() : showStart()) }, [
+    'Quiz abbrechen',
+  ]);
+  abort.hidden = !!round.endless;
+
+  // Challenge: schwarzer Bildschirm mit Rückfrage, die Zeit steht solange still
+  function confirmAbort() {
+    clock.pause();
+    timeout?.pause();
+    autoNext?.pause();
+    countdown.classList.add('paused');
+    const resume = () => {
+      overlay.remove();
+      clock.resume();
+      timeout?.resume();
+      autoNext?.resume();
+      countdown.classList.remove('paused');
+    };
+    const stay = el('button', { className: 'card primary', onclick: resume }, [
+      icon('play'),
+      el('span', { className: 'label' }, ['Weiterspielen']),
+    ]);
+    const overlay = el('div', { className: 'abort-overlay', role: 'dialog', ariaModal: 'true', ariaLabel: 'Challenge beenden?' }, [
+      el('p', { className: 'abort-question' }, ['Challenge wirklich beenden?']),
+      el('p', { className: 'abort-detail' }, ['Dein Versuch ist dann verbraucht.']),
+      stay,
+      el('button', { className: 'text-button', onclick: () => showChallengeInvite(challenge!.challenge) }, ['Beenden']),
+    ]);
+    app.append(overlay);
+    stay.focus();
+  }
 
   function choose(code: string | null) {
-    clearTimeout(timeout);
+    timeout?.clear();
     countdown.classList.add('stopped');
     if (!usedHint) flagButton.remove();
     const elapsed = code === null ? limitMs : Math.min(clock.elapsed(), limitMs || Infinity);
@@ -573,11 +632,13 @@ function showQuestion(round: Round) {
     next.querySelector('.label')!.textContent = isFinished(result.round) ? 'Zum Ergebnis' : 'Weiter';
     next.onclick = () => showQuestion(result.round);
     next.hidden = false;
+    // Die Runde ist fertig gespielt, das Ergebnis soll nicht mehr verloren gehen
+    if (isFinished(result.round)) abort.hidden = true;
     showFlag();
     showContext(code);
     next.focus();
     // Mit Zeitlimit geht es nach kurzer Pause von selbst weiter
-    if (limitMs) setTimeout(() => next.isConnected && next.click(), AUTO_NEXT_MS);
+    if (limitMs) autoNext = pausableTimeout(() => next.isConnected && next.click(), AUTO_NEXT_MS);
   }
 
   app.replaceChildren(
@@ -593,6 +654,7 @@ function showQuestion(round: Round) {
       el('div', { className: 'options' }, buttons),
       feedback,
       next,
+      abort,
       ...(round.endless
         ? [el('button', { className: 'text-button', onclick: () => finish(endRound(latest)) }, ['Runde beenden'])]
         : []),
