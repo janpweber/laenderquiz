@@ -12,7 +12,7 @@ import {
   type Round,
 } from './game';
 import germanySvg from './germany.svg?raw';
-import { contextMap, preloadWorld, zoomOut } from './context-map';
+import { contextMap, enableGestures, preloadWorld, zoomOut } from './context-map';
 import { formatTime, startQuestionClock } from './timer';
 import { browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
 import { RANKED, rankedLabel, rankedSettings, type RankedMode } from './ranked';
@@ -368,15 +368,18 @@ function showQuestion(round: Round) {
   // Nach der Antwort zoomt das Bild aus dem Umriss heraus auf die Region (Kontext zum Lernen).
   // Die Weltkarte wird schon jetzt im Hintergrund geladen.
   preloadWorld();
-  const showContext = async () => {
+  const showContext = async (chosen?: string) => {
     const c = question.country;
     if (!c.id || !c.center || c.radius === undefined) return;
+    const picked = question.options.find((o) => o.code === chosen && o.code !== c.code);
+    const wrong = picked ? { id: picked.id, center: picked.center, tiny: picked.tiny } : undefined;
     try {
-      const map = await contextMap({ id: c.id, center: c.center, radius: c.radius, tiny: c.tiny, frame: c.frame });
+      const map = await contextMap({ id: c.id, center: c.center, radius: c.radius, tiny: c.tiny, frame: c.frame, wrong });
       if (!shape.isConnected) return; // inzwischen weitergeklickt
       map.classList.add('reveal');
       shape.replaceWith(map);
       zoomOut(map, 500, 150);
+      enableGestures(map);
     } catch {
       // ohne Netz bleibt einfach der Umriss stehen
     }
@@ -443,7 +446,7 @@ function showQuestion(round: Round) {
     next.onclick = () => showQuestion(result.round);
     next.hidden = false;
     showFlag();
-    showContext();
+    showContext(code);
     next.focus();
   }
 

@@ -105,7 +105,8 @@ h1 {
 .outline path {
   fill: var(--red);
   stroke: var(--red-dark);
-  stroke-width: 1.5;
+  stroke-width: 0.5px;
+  vector-effect: non-scaling-stroke;
   stroke-linejoin: round;
 }
 
@@ -169,7 +170,7 @@ button {
 .card.primary .icon { background: var(--red); color: var(--white); }
 .card.primary .icon svg path[d^='M10'] { fill: currentColor; }
 
-.outline.tiny path { stroke: var(--red); stroke-width: 12; }
+.outline.tiny path { stroke: var(--red); stroke-width: 4px; }
 
 .options { display: flex; flex-direction: column; gap: 8px; }
 
@@ -271,9 +272,16 @@ button {
   background: var(--white);
 }
 .context-map .sea { fill: var(--white); }
-.context-map .land { fill: #d4d4d4; stroke: var(--white); stroke-width: 1; }
-.context-map .target { fill: var(--red); stroke: var(--red-dark); stroke-width: 1; }
-.context-map .marker { fill: none; stroke: var(--red); stroke-width: 5; }
+.context-map { touch-action: none; cursor: grab; }
+/* Linien in Bildschirm-Pixeln, damit sie beim Zoomen nicht dicker werden
+   (sonst wirkt das Land im ersten Moment größer als der Umriss) */
+.context-map path, .context-map circle { vector-effect: non-scaling-stroke; }
+.context-map .sea { stroke: none; }
+.context-map .land { fill: #d4d4d4; stroke: var(--white); stroke-width: 0.8px; }
+.context-map .target { fill: var(--red); stroke: var(--red-dark); stroke-width: 0.5px; }
+.context-map .marker { fill: none; stroke: var(--red); stroke-width: 3px; }
+.context-map .wrong { fill: #3a3a3a; stroke: var(--white); stroke-width: 0.8px; }
+.context-map .wrong-marker { stroke: #3a3a3a; }
 
 .time { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
 
@@ -422,8 +430,10 @@ button {
 
 /* Nach der Antwort: Umgebung blendet kurz ein, dann zoomt die Karte heraus */
 .context-map.reveal .sea,
-.context-map.reveal .land { animation: context-in 0.15s ease-out both; }
+.context-map.reveal .land, .context-map.reveal .wrong { animation: context-in 0.15s ease-out both; }
+/* Ringe um winzige Länder erst nach dem Zoom zeigen, sonst wirken sie anfangs riesig */
+.context-map.reveal .marker { animation: context-in 0.2s ease-out 0.6s both; }
 @keyframes context-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .context-map.reveal .sea, .context-map.reveal .land { animation: none; }
+  .context-map.reveal .sea, .context-map.reveal .land, .context-map.reveal .wrong, .context-map.reveal .marker { animation: none; }
 }
