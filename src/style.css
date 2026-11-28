@@ -419,3 +419,11 @@ button {
   color: var(--grey-dark);
   text-align: center;
 }
+
+/* Nach der Antwort: Umgebung blendet kurz ein, dann zoomt die Karte heraus */
+.context-map.reveal .sea,
+.context-map.reveal .land { animation: context-in 0.15s ease-out both; }
+@keyframes context-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .context-map.reveal .sea, .context-map.reveal .land { animation: none; }
+}

@@ -18,3 +18,6 @@ Die Weltkarte (Natural Earth 50m) wird erst beim ersten Öffnen nachgeladen, dam
 
 ## Bezug
 Neue User Story: Als Spielerin will ich nach der Antwort sehen, wo das Land liegt, damit ich dazulerne.
+
+## Änderung 28.11.2026 (Jan)
+Nach jeder Antwort erscheint die Karte automatisch, zusammen mit der Flagge. Der Knopf „Auf der Karte zeigen“ entfällt. Animation: Die Umgebung blendet um den großen Umriss herum ein (0,15 s), dann zoomt das Bild in 0,5 s auf den Kartenausschnitt heraus. Damit das nahtlos ist, speichert das Datenskript pro Land Maßstab und Verschiebung des Umrisses (`frame`). Ohne Netz bleibt der Umriss stehen. Bei „Bewegung reduzieren“ entfällt die Animation.

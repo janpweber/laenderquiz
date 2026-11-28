@@ -162,14 +162,15 @@ test('freies Spiel zählt nie für die Bestenliste, auch mit Ranglisten-Einstell
   await expect(page.locator('.entry input')).toHaveCount(0);
 });
 
-test('auf der Karte erscheint auch die Flagge, ohne als Hinweis zu zählen', async ({ page }) => {
+test('nach der Antwort: Flagge und Karte erscheinen von selbst, ohne als Hinweis zu zählen', async ({ page }) => {
   await page.locator('.card', { hasText: 'Rangliste' }).click();
   await page.locator('.card', { hasText: 'Europa' }).click();
+  await expect(page.locator('.outline')).toBeVisible();
   await page.locator('.option').first().click();
   await expect(page.locator('.flag-hint')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Auf der Karte zeigen' }).click();
-  await expect(page.locator('.context-map')).toBeVisible();
   await expect(page.locator('.flag-hint-image')).toBeVisible();
+  await expect(page.locator('.context-map')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Auf der Karte zeigen' })).toHaveCount(0);
   await expect(page.locator('.badge')).toBeVisible();
   await expect(page.locator('.hint-note')).toBeHidden();
 });
