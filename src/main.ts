@@ -265,7 +265,7 @@ function showStart() {
       map(),
       card('Rangliste', 'trophy', showRanked, 'primary highlight', 'Welt oder Kontinent · mit Bestenliste'),
       card('Freies Spiel', 'play', showSettings, 'secondary', summary(settings, pool(settings).length)),
-      card('Challenge erstellen', 'flag', () => showChallengeCreate(), 'secondary', 'Freunde per Link herausfordern'),
+      card('Freunde herausfordern', 'flag', () => showChallengeCreate(), 'secondary', 'Challenge per Link'),
       card('Bestenliste', 'list', () => showLeaderboard(), 'secondary'),
     ]),
   );
