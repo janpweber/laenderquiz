@@ -379,6 +379,22 @@ button {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+/* Kopfzeile im Spiel: Badge links, Abbrechen-X rechts */
+.game-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.game-top .badge { align-self: center; }
+.quit {
+  margin-left: auto;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  color: var(--black);
+  display: grid;
+  place-items: center;
+}
+.quit .icon { width: 28px; height: 28px; background: none; border: none; display: grid; place-items: center; }
+.quit svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .leaderboard .chips { justify-content: center; }
 /* Ranglisten-Karte auf dem Start: schwarz, damit sie vor Grau und Rot heraussticht */
 .card.highlight { background: var(--black); color: var(--white); }

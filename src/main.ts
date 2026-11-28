@@ -78,6 +78,7 @@ const ICONS = {
   trophy: 'M8 5 H16 V10 A4 4 0 0 1 8 10 Z M8 7 H5 V8 A3 3 0 0 0 8 11 M16 7 H19 V8 A3 3 0 0 1 16 11 M12 14 V17 M9 19 H15',
   flag: 'M6 21 V4 M6 4 H17 L15 8 L17 12 H6',
   list: 'M9 7 H18 M9 12 H18 M9 17 H18 M5.5 7 H6 M5.5 12 H6 M5.5 17 H6',
+  close: 'M7 7 L17 17 M17 7 L7 17',
 };
 
 function icon(content: keyof typeof ICONS | string): HTMLSpanElement {
@@ -580,9 +581,14 @@ function showQuestion(round: Round) {
     if (limitMs) setTimeout(() => next.isConnected && next.click(), AUTO_NEXT_MS);
   }
 
+  // Kleines X oben rechts: Quiz abbrechen und zurück zum Start, ohne Ergebnis
+  const quit = el('button', { className: 'quit', ariaLabel: 'Quiz abbrechen', title: 'Quiz abbrechen', onclick: abortRound }, [
+    icon('close'),
+  ]);
+
   app.replaceChildren(
     el('section', { className: 'screen game' }, [
-      badge,
+      el('div', { className: 'game-top' }, [badge, quit]),
       el('header', { className: 'status' }, [
         el('span', {}, [round.endless ? `Frage ${round.index + 1}` : `Frage ${round.index + 1} von ${round.questions.length}`]),
         el('span', {}, [`${round.score} richtig`]),
@@ -598,6 +604,12 @@ function showQuestion(round: Round) {
         : []),
     ]),
   );
+}
+
+function abortRound() {
+  // Challenge-Link aus der Adresse nehmen, sonst öffnet ein Neuladen wieder die Challenge
+  if (activeChallenge) return leaveChallenge();
+  showStart();
 }
 
 function finish(round: Round) {

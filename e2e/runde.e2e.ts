@@ -280,3 +280,13 @@ test('Üben: Fehler wiederholen und Länder der letzten Runde üben', async ({ p
     await expect(fehler).toBeDisabled();
   }
 });
+
+test('laufendes Quiz lässt sich mit dem X abbrechen', async ({ page }) => {
+  await page.locator('.card', { hasText: 'Rangliste' }).click();
+  await page.locator('.card', { hasText: 'Ganze Welt' }).click();
+  await answerAll(page, 2);
+  await page.getByRole('button', { name: 'Quiz abbrechen' }).click();
+  await expect(page.locator('.start')).toBeVisible();
+  // kein Rekord, weil die Runde nicht fertig gespielt wurde
+  await expect(page.locator('.start .record')).toHaveCount(0);
+});
