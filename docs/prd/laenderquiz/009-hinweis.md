@@ -11,6 +11,7 @@ Status: umgesetzt, wartet auf Jans Review
 - **Freies Spiel:** kostet keine Punkte, im Ergebnis steht „n mit Hinweis“.
 - **Ranglisten-Runde:** ebenfalls erlaubt, ohne Rückfrage. Danach verschwindet das Ranglisten-Abzeichen, unter dem Umriss steht dauerhaft „Mit Hinweis, zählt nicht für die Bestenliste“, am Ende kein Eintragsfeld.
 - Runden mit Hinweis verbessern den persönlichen Rekord nicht.
+- Nach der Antwort erscheint beim Wechsel auf die Karte („Auf der Karte zeigen“) auch die Flagge. Das zählt nicht als Hinweis.
 - Flaggen: flag-icons (MIT), als einzelne SVG-Dateien, die erst beim Aufdecken geladen werden.
 
 Der **Größenvergleich mit Deutschland** wird getrennt umgesetzt (eigene Aufgabe, noch zu klären: Zahl oder Grafik, Platz, Wertung).

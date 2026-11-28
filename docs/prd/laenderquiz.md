@@ -63,7 +63,7 @@ Am Ende sieht man die Punktzahl, den persönlichen Rekord und einen Button für 
 - **Rundenlänge:** 10 (Standard), 20, endlos oder freie Zahl von 1 bis N, wobei N die Zahl der Länder nach Kontinent- und Schwierigkeitsfilter ist. Endlos läuft, bis die Spielerin beendet oder alle Länder des Filters gespielt sind.
 - **Schwierigkeit:** „Normal“ schließt winzige Inselstaaten aus, „Schwer“ nimmt alle Länder des Filters. Welche Staaten als winzig gelten, wird in den Länderdaten fest markiert (Richtwert: kleine Fläche und reine Inselstaaten, etwa Nauru, Tuvalu, Malediven, Seychellen, Karibik-Kleinstaaten). Die Liste wird bei der Datenaufbereitung einmal festgelegt und im Repository dokumentiert.
 - **Ablenker** kommen immer aus der Menge der erlaubten Länder der aktuellen Runde, damit in „Normal“ keine Inselstaaten als Antworten auftauchen.
-- **Ranglisten-Runden (geändert am 27.11.2026):** Welt mit 10 Ländern und jeder Kontinent mit 5 Ländern, immer Normal. Jede hat eine eigene Bestenliste. Nur nach einer solchen Runde wird der Eintrag angeboten. Auf dem Start stehen die Wege „Rangliste“ (hervorgehoben) und „Freies Spiel“.
+- **Ranglisten-Runden (geändert am 27.11.2026):** Welt mit 10 Ländern und jeder Kontinent mit 5 Ländern, immer Normal. Jede hat eine eigene Bestenliste. Nur nach einer solchen Runde wird der Eintrag angeboten. Auf dem Start stehen die Wege „Rangliste“ (hervorgehoben) und „Freies Spiel“. Für die Bestenliste zählt nur, was über „Rangliste“ gestartet wurde, freies Spiel nie, auch nicht mit denselben Einstellungen.
 - **Wertung:** zuerst Anzahl richtiger Antworten (absteigend), dann Gesamtzeit (aufsteigend).
 
 ### Datenmodell (Supabase)

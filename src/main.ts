@@ -15,7 +15,7 @@ import germanySvg from './germany.svg?raw';
 import { contextMap } from './context-map';
 import { formatTime, startQuestionClock } from './timer';
 import { browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
-import { RANKED, rankedFor, rankedLabel, rankedSettings, type RankedMode } from './ranked';
+import { RANKED, rankedLabel, rankedSettings, type RankedMode } from './ranked';
 import { LeaderboardError, fetchTop, plausible, submitEntry } from './leaderboard';
 import { NAME_MAX, checkName } from './name';
 import { flagUrl } from './flags';
@@ -112,13 +112,19 @@ function outline(country: Country): SVGSVGElement {
   return svg;
 }
 
-// Einstellungen der laufenden Runde (Rangliste oder freies Spiel)
+// Einstellungen der laufenden Runde. Für die Bestenliste zählt nur, was über
+// „Rangliste“ gestartet wurde, freies Spiel nie (auch nicht mit gleichen Einstellungen).
 let active: Settings = settings;
-function startRound(s: Settings) {
+let activeRanked: RankedMode | undefined;
+function startRound(s: Settings, ranked?: RankedMode) {
   active = s;
+  activeRanked = ranked;
   showQuestion(createRound(pool(s), { length: s.length }));
 }
-const newRound = () => startRound(active);
+function startRanked(mode: RankedMode) {
+  startRound(rankedSettings(mode), mode);
+}
+const newRound = () => startRound(active, activeRanked);
 
 function showSettings() {
   const available = pool(settings).length;
@@ -193,9 +199,6 @@ function showSettings() {
         (v) => update({ difficulty: v }),
       ),
       el('p', { className: 'hint' }, ['„Schwer“ enthält auch 24 winzige Staaten wie Monaco oder Tuvalu.']),
-      ...(rankedFor(settings)
-        ? [el('p', { className: 'ranked-hint' }, [`Zählt für die Rangliste ${rankedLabel(rankedFor(settings)!)}`])]
-        : []),
       card('Los geht’s', 'play', () => startRound(settings), 'primary', summary(settings, available)),
       el('button', { className: 'text-button', onclick: showStart }, ['Zurück']),
     ]),
@@ -236,7 +239,7 @@ function showRanked() {
       ...RANKED.map((mode, i) => {
         const best = records[recordKey(rankedSettings(mode))];
         const sub = `${mode.length} Länder${best ? ` · Dein Rekord ${best.score}/${best.total}` : ''}`;
-        return card(rankedLabel(mode), 'play', () => startRound(rankedSettings(mode)), i === 0 ? 'primary' : 'secondary', sub);
+        return card(rankedLabel(mode), 'play', () => startRanked(mode), i === 0 ? 'primary' : 'secondary', sub);
       }),
       el('button', { className: 'text-button', onclick: showStart }, ['Zurück']),
     ]),
@@ -255,11 +258,11 @@ function rememberedName(): string {
 
 // Eintrag in die Bestenliste, nur nach einer Ranglisten-Runde
 function leaderboardEntry(round: Round): HTMLElement {
-  const mode = round.endless ? undefined : rankedFor(active);
+  const mode = round.endless ? undefined : activeRanked;
   if (mode && round.hints > 0)
     return el('p', { className: 'hint center' }, ['Mit Hinweis gespielt, kein Eintrag in die Bestenliste.']);
   if (!mode || round.questions.length !== mode.length)
-    return el('p', { className: 'hint center' }, ['In die Bestenliste kommen nur Ranglisten-Runden.']);
+    return el('p', { className: 'hint center' }, ['In die Bestenliste kommen nur Ranglisten-Runden (Start → Rangliste).']);
   if (!plausible(round.score, round.totalMs, mode.length))
     return el('p', { className: 'hint center' }, ['Diese Runde war zu schnell für die Bestenliste.']);
 
@@ -327,7 +330,7 @@ async function showLeaderboard(mode: RankedMode = RANKED[0], highlight?: string)
       el('p', { className: 'hint center' }, [`${rankedLabel(mode)} · ${mode.length} Länder · Normal`]),
       status,
       list,
-      card(`${rankedLabel(mode)} spielen`, 'play', () => startRound(rankedSettings(mode)), 'primary', `${mode.length} Länder · Normal`),
+      card(`${rankedLabel(mode)} spielen`, 'play', () => startRanked(mode), 'primary', `${mode.length} Länder · Normal`),
       card('Zurück zum Start', 'arrow', showStart, 'secondary'),
     ]),
   );
@@ -378,6 +381,7 @@ function showQuestion(round: Round) {
     try {
       mapView ??= await contextMap({ id: c.id, center: c.center, radius: c.radius, tiny: c.tiny });
       shape.replaceWith(mapView);
+      showFlag();
       mapToggle.textContent = 'Umriss zeigen';
     } catch {
       mapToggle.textContent = 'Karte konnte nicht geladen werden';
@@ -398,7 +402,7 @@ function showQuestion(round: Round) {
 
   // Hinweis: Flagge oben rechts in der Umriss-Karte. In Ranglisten-Runden erlaubt,
   // dann zählt die Runde aber nicht mehr für die Bestenliste.
-  const ranked = !round.endless && rankedFor(active);
+  const ranked = round.endless ? undefined : activeRanked;
   let usedHint = false;
   const badge = el('p', { className: 'badge' }, [ranked ? `Rangliste · ${rankedLabel(ranked)}` : '']);
   const hintNote = el('p', { className: 'hint-note' }, ['Mit Hinweis, zählt nicht für die Bestenliste']);
@@ -413,11 +417,18 @@ function showQuestion(round: Round) {
     icon('flag'),
     'Flagge zeigen',
   ]);
-  flagButton.onclick = () => {
+  let flagShown = false;
+  const showFlag = () => {
     const url = flagUrl(question.country.code);
-    if (!url) return;
+    if (!url || flagShown) return;
+    flagShown = true;
+    const image = el('img', { className: 'flag-hint-image', src: url, alt: `Flagge von ${question.country.name}` });
+    if (flagButton.isConnected) flagButton.replaceWith(image);
+    else stage.append(image);
+  };
+  flagButton.onclick = () => {
     usedHint = true;
-    flagButton.replaceWith(el('img', { className: 'flag-hint-image', src: url, alt: 'Flagge des gesuchten Landes' }));
+    showFlag();
     showRankedState(true);
   };
   const stage = el('div', { className: 'stage' }, [shape, flagButton]);
@@ -503,7 +514,7 @@ function showResult(round: Round) {
       // Auf kleinen Displays ist neben dem Eintragsfeld kein Platz für die Karte
       ...(entry.classList.contains('entry') ? [] : [map()]),
       card('Neue Runde', 'again', newRound, 'primary', summary(active, pool(active).length)),
-      rankedFor(active)
+      activeRanked
         ? card('Andere Rangliste', 'trophy', showRanked, 'secondary')
         : card('Einstellungen', 'settings', showSettings, 'secondary'),
     ]),
