@@ -64,7 +64,7 @@ export interface AnswerResult {
   correctCountry: Country;
 }
 
-function shuffle<T>(items: T[], rng: Rng): T[] {
+export function shuffle<T>(items: T[], rng: Rng): T[] {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));

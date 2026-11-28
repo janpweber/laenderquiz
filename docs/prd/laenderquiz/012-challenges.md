@@ -3,7 +3,7 @@
 PRD: docs/prd/laenderquiz.md
 Typ: HITL (Jan muss das SQL-Schema in Supabase ausführen)
 Blockiert durch: 011
-Status: geplant
+Status: in Review
 
 ## Was (Entscheidungen von Jan, 28.11.2026)
 - Jeder kann eine Challenge erstellen: Startbildschirm „Challenge erstellen“ oder auf dem Ergebnis „Freunde herausfordern“ (mit den gerade gespielten Einstellungen).

@@ -478,3 +478,9 @@ button {
 .review-country { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; }
 .review-yours { font-weight: 700; color: var(--grey-dark); }
 .review-nav { display: flex; justify-content: space-between; align-items: center; }
+
+/* Challenges */
+.conditions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.conditions li { background: var(--white); padding: 10px 14px; font-weight: 700; }
+.conditions li::before { content: '✓'; color: var(--red); font-weight: 900; margin-right: 8px; }
+.challenge .entry input[readonly] { font-size: 0.85rem; color: var(--grey-dark); }

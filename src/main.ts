@@ -20,6 +20,24 @@ import { RANKED, rankedLabel, rankedSettings, type RankedMode } from './ranked';
 import { LeaderboardError, fetchTop, plausible, submitEntry } from './leaderboard';
 import { NAME_MAX, checkName } from './name';
 import { flagUrl } from './flags';
+import {
+  CHALLENGE_ATTEMPTS,
+  CHALLENGE_LENGTHS,
+  TITLE_MAX,
+  attemptsUsed,
+  challengeRound,
+  challengeSettings,
+  conditions,
+  createChallenge,
+  fetchChallenge,
+  fetchChallengeResults,
+  fixQuestions,
+  playerId,
+  submitChallengeResult,
+  useAttempt,
+  type Challenge,
+  type ChallengeSetup,
+} from './challenge';
 import { TEMPOS, loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -130,9 +148,12 @@ function outline(country: Country): SVGSVGElement {
 // „Rangliste“ gestartet wurde, freies Spiel nie (auch nicht mit gleichen Einstellungen).
 let active: Settings = settings;
 let activeRanked: RankedMode | undefined;
+// Laufende Challenge-Runde: welche Challenge, welcher Versuch, unter welchem Namen
+let activeChallenge: { challenge: Challenge; attempt: number; name: string } | undefined;
 function startRound(s: Settings, ranked?: RankedMode) {
   active = s;
   activeRanked = ranked;
+  activeChallenge = undefined;
   showQuestion(createRound(pool(s), { length: s.length }));
 }
 function startRanked(mode: RankedMode) {
@@ -244,6 +265,7 @@ function showStart() {
       map(),
       card('Rangliste', 'trophy', showRanked, 'primary highlight', 'Welt oder Kontinent · mit Bestenliste'),
       card('Freies Spiel', 'play', showSettings, 'secondary', summary(settings, pool(settings).length)),
+      card('Challenge erstellen', 'flag', () => showChallengeCreate(), 'secondary', 'Freunde per Link herausfordern'),
       card('Bestenliste', 'list', () => showLeaderboard(), 'secondary'),
     ]),
   );
@@ -443,11 +465,14 @@ function showQuestion(round: Round) {
   // dann zählt die Runde aber nicht mehr für die Bestenliste.
   const ranked = round.endless ? undefined : activeRanked;
   let usedHint = false;
-  const badge = el('p', { className: 'badge' }, [ranked ? `Rangliste · ${rankedLabel(ranked)}` : '']);
+  const challenge = activeChallenge;
+  const badge = el('p', { className: 'badge' }, [
+    ranked ? `Rangliste · ${rankedLabel(ranked)}` : challenge ? `Challenge · ${challenge.challenge.titel}` : '',
+  ]);
   const hintNote = el('p', { className: 'hint-note' }, ['Mit Hinweis, zählt nicht für die Bestenliste']);
   const showRankedState = (disqualified: boolean) => {
     // Platz behalten, damit beim Aufdecken nichts springt
-    badge.hidden = !ranked;
+    badge.hidden = !ranked && !challenge;
     badge.style.visibility = disqualified ? 'hidden' : '';
     hintNote.hidden = !ranked || !disqualified;
   };
@@ -470,7 +495,8 @@ function showQuestion(round: Round) {
     showFlag();
     showRankedState(true);
   };
-  const stage = el('div', { className: 'stage' }, [shape, flagButton]);
+  // In Challenges gibt es keinen Hinweis, damit alle die gleichen Bedingungen haben
+  const stage = el('div', { className: 'stage' }, challenge ? [shape] : [shape, flagButton]);
 
   // Tempo: Balken läuft ab, danach zählt die Frage als falsch
   const limitMs = (round.endless || activeRanked ? 0 : (active.tempo ?? 0)) * 1000;
@@ -536,6 +562,7 @@ function finish(round: Round) {
 }
 
 function showResult(round: Round) {
+  if (activeChallenge) return showChallengeResult(round, activeChallenge);
   const total = round.questions.length;
   const endless = round.endless === true;
   // Runden mit Hinweis verbessern den Rekord nicht, damit er vergleichbar bleibt
@@ -578,6 +605,7 @@ function showResult(round: Round) {
     activeRanked
       ? card('Andere Rangliste', 'trophy', showRanked, 'secondary')
       : card('Einstellungen', 'settings', showSettings, 'secondary'),
+    card('Freunde herausfordern', 'flag', () => showChallengeCreate(active), 'secondary', 'Challenge mit diesen Einstellungen'),
   ]);
   app.replaceChildren(screen);
 }
@@ -624,4 +652,321 @@ function showReview(round: Round, i: number, back: () => void) {
   );
 }
 
-showStart();
+// ---------------------------------------------------------------------------
+// Challenges per Link
+// ---------------------------------------------------------------------------
+
+const challengeLink = (id: string) => `${location.origin}${location.pathname}?c=${id}`;
+
+function rememberName(name: string) {
+  try {
+    browserStore()?.setItem(NAME_KEY, name);
+  } catch {
+    // ohne Speicher eben nicht merken
+  }
+}
+
+function textInput(value: string, placeholder: string, label: string, max: number) {
+  return el('input', { type: 'text', value, maxLength: max * 2, placeholder, ariaLabel: label });
+}
+
+// Challenge anlegen, optional mit den Einstellungen der gerade gespielten Runde
+function showChallengeCreate(from?: Settings) {
+  const setup = {
+    region: from?.continent ?? 'Welt',
+    laender: CHALLENGE_LENGTHS.reduce((best, n) =>
+      typeof from?.length === 'number' && Math.abs(n - from.length) < Math.abs(best - from.length) ? n : best,
+    10 as number),
+    tempo: from?.tempo ?? 0,
+    gleich: true,
+    versuche: 1 as number,
+  };
+  const title = textInput('Länder-Challenge', 'Name der Challenge', 'Name der Challenge', TITLE_MAX);
+  const name = textInput(rememberedName(), 'Dein Name', 'Dein Name', NAME_MAX);
+  const message = el('p', { className: 'form-message', ariaLive: 'polite' });
+  const choices = el('div', { className: 'challenge-choices' });
+  const render = () =>
+    choices.replaceChildren(
+      el('h2', {}, ['Region']),
+      chips(
+        CONTINENTS.map((c) => ({ label: c === 'Welt' ? 'Ganze Welt' : c, value: c })),
+        (v) => setup.region === v,
+        (v) => ((setup.region = v), render()),
+      ),
+      el('h2', {}, ['Anzahl Länder']),
+      chips(
+        CHALLENGE_LENGTHS.map((n) => ({ label: String(n), value: n as number })),
+        (v) => setup.laender === v,
+        (v) => ((setup.laender = v), render()),
+      ),
+      el('h2', {}, ['Tempo']),
+      chips(
+        TEMPOS.map((t) => ({ label: t === 0 ? 'Ohne Limit' : `${t} s`, value: t })),
+        (v) => setup.tempo === v,
+        (v) => ((setup.tempo = v), render()),
+      ),
+      el('h2', {}, ['Länder']),
+      chips(
+        [
+          { label: 'Gleich für alle', value: true },
+          { label: 'Zufällig', value: false },
+        ],
+        (v) => setup.gleich === v,
+        (v) => ((setup.gleich = v), render()),
+      ),
+      el('h2', {}, ['Versuche']),
+      chips(
+        CHALLENGE_ATTEMPTS.map((n) => ({ label: String(n), value: n as number })),
+        (v) => setup.versuche === v,
+        (v) => ((setup.versuche = v), render()),
+      ),
+      el('p', { className: 'hint' }, [
+        setup.gleich
+          ? 'Alle bekommen dieselben Länder und Antworten, nur in anderer Reihenfolge. Bei mehreren Versuchen hat jeder Versuch eigene Länder, für alle gleich.'
+          : 'Jede Runde zieht die Länder neu aus der Region.',
+      ]),
+    );
+  render();
+
+  let sending = false;
+  const create = async () => {
+    if (sending) return;
+    const t = checkName(title.value, TITLE_MAX, 'Namen für die Challenge');
+    const n = checkName(name.value);
+    if (!t.ok) return void (message.textContent = t.message);
+    if (!n.ok) return void (message.textContent = n.message);
+    sending = true;
+    message.textContent = 'Wird angelegt …';
+    const challengeSetup: ChallengeSetup = {
+      titel: t.name,
+      ersteller: n.name,
+      region: setup.region,
+      laender: setup.laender,
+      tempo: setup.tempo,
+      versuche: setup.versuche,
+      fragen: setup.gleich
+        ? fixQuestions(pool(challengeSettings({ region: setup.region, laender: setup.laender, tempo: setup.tempo })), setup.laender, setup.versuche)
+        : null,
+    };
+    try {
+      const challenge = await createChallenge(challengeSetup);
+      rememberName(n.name);
+      showChallengeCreated(challenge);
+    } catch (e) {
+      message.textContent = e instanceof LeaderboardError ? e.message : 'Das hat leider nicht geklappt.';
+      sending = false;
+    }
+  };
+
+  app.replaceChildren(
+    el('section', { className: 'screen settings challenge-create' }, [
+      el('p', { className: 'kicker' }, ['Challenge']),
+      el('h1', {}, ['Freunde herausfordern']),
+      el('div', { className: 'entry' }, [
+        el('label', { className: 'entry-label' }, ['Name der Challenge', title]),
+        el('label', { className: 'entry-label' }, ['Dein Name', name]),
+      ]),
+      choices,
+      message,
+      card('Challenge erstellen', 'flag', create, 'primary', 'Danach bekommst du den Link'),
+      el('button', { className: 'text-button', onclick: showStart }, ['Zurück']),
+    ]),
+  );
+}
+
+async function shareChallenge(challenge: Challenge, status: HTMLElement) {
+  const url = challengeLink(challenge.id);
+  const text = `${challenge.ersteller} fordert dich heraus: ${challenge.titel} im Länderquiz. Erkennst du die Länder am Umriss?`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: challenge.titel, text, url });
+      return;
+    }
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return; // Teilen abgebrochen
+  }
+  try {
+    await navigator.clipboard.writeText(`${text} ${url}`);
+    status.textContent = 'Link kopiert. Füge ihn in WhatsApp oder eine Mail ein.';
+  } catch {
+    status.textContent = 'Kopieren ging nicht. Markiere den Link oben und kopiere ihn.';
+  }
+}
+
+function showChallengeCreated(challenge: Challenge) {
+  const status = el('p', { className: 'form-message center', ariaLive: 'polite' });
+  const link = el('input', { type: 'text', value: challengeLink(challenge.id), readOnly: true, ariaLabel: 'Link zur Challenge' });
+  link.onfocus = () => link.select();
+  history.replaceState(null, '', `?c=${challenge.id}`);
+  app.replaceChildren(
+    el('section', { className: 'screen challenge' }, [
+      el('p', { className: 'kicker' }, ['Challenge erstellt']),
+      el('h1', {}, [challenge.titel]),
+      el('ul', { className: 'conditions' }, conditions(challenge).map((c) => el('li', {}, [c]))),
+      el('div', { className: 'entry' }, [link]),
+      card('Link teilen', 'arrow', () => shareChallenge(challenge, status), 'primary', 'WhatsApp, Mail oder kopieren'),
+      status,
+      card('Selbst spielen', 'play', () => showChallengeInvite(challenge), 'secondary'),
+      el('button', { className: 'text-button', onclick: leaveChallenge }, ['Zum Start']),
+    ]),
+  );
+}
+
+function leaveChallenge() {
+  history.replaceState(null, '', location.pathname);
+  showStart();
+}
+
+async function openChallenge(id: string) {
+  app.replaceChildren(el('section', { className: 'screen challenge' }, [el('p', { className: 'lead center' }, ['Challenge wird geladen …'])]));
+  try {
+    const challenge = await fetchChallenge(id);
+    if (challenge) return showChallengeInvite(challenge);
+    app.replaceChildren(
+      el('section', { className: 'screen challenge' }, [
+        el('h1', {}, ['Challenge nicht gefunden']),
+        el('p', { className: 'lead' }, ['Der Link ist unvollständig oder die Challenge wurde gelöscht.']),
+        card('Zum Start', 'arrow', leaveChallenge, 'primary'),
+      ]),
+    );
+  } catch (e) {
+    app.replaceChildren(
+      el('section', { className: 'screen challenge' }, [
+        el('h1', {}, ['Gerade nicht erreichbar']),
+        el('p', { className: 'lead' }, [e instanceof LeaderboardError ? e.message : 'Die Challenge konnte nicht geladen werden.']),
+        card('Nochmal versuchen', 'again', () => openChallenge(id), 'primary'),
+        el('button', { className: 'text-button', onclick: leaveChallenge }, ['Zum Start']),
+      ]),
+    );
+  }
+}
+
+// Einladung: wer fordert heraus, unter welchen Bedingungen, wie viele Versuche sind übrig
+function showChallengeInvite(challenge: Challenge) {
+  history.replaceState(null, '', `?c=${challenge.id}`);
+  const used = attemptsUsed(browserStore(), challenge.id);
+  const left = challenge.versuche - used;
+  const name = textInput(rememberedName(), 'Dein Name', 'Dein Name für die Rangliste', NAME_MAX);
+  const message = el('p', { className: 'form-message', ariaLive: 'polite' });
+  const start = () => {
+    const n = checkName(name.value);
+    if (!n.ok) return void (message.textContent = n.message);
+    rememberName(n.name);
+    startChallenge(challenge, n.name);
+  };
+  name.onkeydown = (ev) => {
+    if (ev.key === 'Enter') start();
+  };
+  app.replaceChildren(
+    el('section', { className: 'screen challenge' }, [
+      el('p', { className: 'kicker' }, ['Challenge']),
+      el('h1', {}, [`${challenge.ersteller} fordert dich heraus`]),
+      el('p', { className: 'lead' }, [challenge.titel]),
+      el('ul', { className: 'conditions' }, conditions(challenge).map((c) => el('li', {}, [c]))),
+      ...(left > 0
+        ? [
+            el('div', { className: 'entry' }, [el('label', { className: 'entry-label' }, ['Dein Name', name]), message]),
+            card(
+              used === 0 ? 'Los geht’s' : `Versuch ${used + 1} von ${challenge.versuche}`,
+              'play',
+              start,
+              'primary',
+              left === 1 ? 'Dein letzter Versuch' : `Noch ${left} Versuche`,
+            ),
+          ]
+        : [el('p', { className: 'hint center' }, ['Du hast alle Versuche gespielt.'])]),
+      card('Rangliste ansehen', 'list', () => showChallengeBoard(challenge), 'secondary'),
+      el('button', { className: 'text-button', onclick: leaveChallenge }, ['Zum Start']),
+    ]),
+  );
+}
+
+function startChallenge(challenge: Challenge, name: string) {
+  const attempt = useAttempt(browserStore(), challenge.id);
+  active = challengeSettings(challenge);
+  activeRanked = undefined;
+  activeChallenge = { challenge, attempt, name };
+  showQuestion(challengeRound(challenge, attempt, allCountries));
+}
+
+function showChallengeResult(round: Round, current: NonNullable<typeof activeChallenge>) {
+  const { challenge, attempt, name } = current;
+  const total = round.questions.length;
+  const left = challenge.versuche - attemptsUsed(browserStore(), challenge.id);
+  const status = el('p', { className: 'form-message center', ariaLive: 'polite' }, ['Ergebnis wird eingetragen …']);
+  const back = () => app.replaceChildren(screen);
+  const screen = el('section', { className: 'screen result' }, [
+    el('p', { className: 'kicker' }, [`Challenge · ${challenge.titel}`]),
+    el('h1', {}, ['Geschafft!']),
+    el('p', { className: 'score' }, [`${round.score} von ${total}`]),
+    el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
+    status,
+    card('Rangliste der Challenge', 'list', () => showChallengeBoard(challenge, back), 'primary'),
+    card('Antworten durchgehen', 'list', () => showReview(round, 0, back), 'secondary', 'Karte, Flagge und deine Antwort'),
+    ...(left > 0
+      ? [card('Nächster Versuch', 'again', () => startChallenge(challenge, name), 'secondary', left === 1 ? 'Dein letzter Versuch' : `Noch ${left} Versuche`)]
+      : []),
+    card('Challenge teilen', 'flag', () => shareChallenge(challenge, status), 'secondary'),
+    card('Frei weiterspielen', 'play', () => {
+      settings = { ...challengeSettings(challenge) };
+      saveSettings(settings);
+      history.replaceState(null, '', location.pathname);
+      showSettings();
+    }, 'secondary', 'Gleiche Einstellungen im freien Spiel'),
+  ]);
+  app.replaceChildren(screen);
+  submitChallengeResult({
+    challenge_id: challenge.id,
+    spieler: playerId(browserStore()),
+    name,
+    versuch: attempt,
+    richtige: round.score,
+    zeit_ms: round.totalMs,
+  })
+    .then(() => (status.textContent = 'Eingetragen!'))
+    .catch((e) => (status.textContent = e instanceof LeaderboardError ? e.message : 'Eintragen hat nicht geklappt.'));
+}
+
+async function showChallengeBoard(challenge: Challenge, back?: () => void) {
+  const list = el('ol', { className: 'board' });
+  const status = el('p', { className: 'lead center' }, ['Lädt …']);
+  const me = playerId(browserStore());
+  app.replaceChildren(
+    el('section', { className: 'screen leaderboard' }, [
+      el('p', { className: 'kicker' }, ['Challenge']),
+      el('h1', {}, [challenge.titel]),
+      el('p', { className: 'lead' }, [`von ${challenge.ersteller} · ${conditions(challenge).slice(0, 2).join(' · ')}`]),
+      status,
+      list,
+      card('Challenge teilen', 'flag', () => shareChallenge(challenge, status), 'secondary'),
+      back
+        ? el('button', { className: 'text-button', onclick: back }, ['Zurück'])
+        : el('button', { className: 'text-button', onclick: () => showChallengeInvite(challenge) }, ['Zurück']),
+    ]),
+  );
+  try {
+    const entries = await fetchChallengeResults(challenge.id);
+    status.remove();
+    if (entries.length === 0) {
+      list.replaceWith(el('p', { className: 'lead center' }, ['Noch niemand hat gespielt.']));
+      return;
+    }
+    list.append(
+      ...entries.map((entry, i) =>
+        el('li', { className: entry.spieler === me ? 'mine' : '' }, [
+          el('span', { className: 'rank' }, [`${i + 1}.`]),
+          el('span', { className: 'name' }, [entry.name]),
+          el('span', { className: 'points' }, [`${entry.richtige}/${challenge.laender}`]),
+          el('span', { className: 'ms' }, [formatTime(entry.zeit_ms)]),
+        ]),
+      ),
+    );
+  } catch (e) {
+    status.textContent = e instanceof LeaderboardError ? e.message : 'Die Rangliste konnte nicht geladen werden.';
+  }
+}
+
+// Einstieg: mit ?c=… direkt zur Challenge, sonst Startbildschirm
+const challengeId = new URLSearchParams(location.search).get('c');
+if (challengeId) openChallenge(challengeId);
+else showStart();
