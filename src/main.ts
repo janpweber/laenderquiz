@@ -91,6 +91,19 @@ function chips<T>(options: { label: string; value: T }[], selected: (v: T) => bo
   );
 }
 
+// Kleiner gestrichelter Deutschland-Umriss als Symbol für den Größenvergleich
+const germanyPath = allCountries.find((c) => c.code === 'DEU')?.path ?? '';
+function germanyIcon(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '150 0 700 1000');
+  svg.setAttribute('class', 'icon-de');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', germanyPath);
+  svg.append(path);
+  return svg;
+}
+
 // Deutschland aus Dreiecken, Berlin und Freiburg schwarz markiert
 // Inline eingebunden, damit die Animation bei jedem Anzeigen neu startet
 function map(): HTMLDivElement {
@@ -383,7 +396,7 @@ function showQuestion(round: Round) {
       if (map.dataset.ratio) {
         // Zahl immer, Deutschland-Silhouette nur auf Tipp, damit die Karte ruhig bleibt
         const compare = el('button', { className: 'size-compare', ariaLabel: 'Deutschland zum Vergleich einblenden' }, [
-          el('span', { className: 'icon-de' }),
+          germanyIcon(),
           sizeComparison(Number(map.dataset.ratio)),
         ]);
         compare.setAttribute('aria-pressed', 'false');
