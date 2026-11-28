@@ -83,3 +83,11 @@ describe('Rekord ohne funktionierenden Speicher', () => {
     expect(Object.keys(loadRecords(store))).toEqual([five]);
   });
 });
+
+describe('Rekord mit Tempo', () => {
+  it('führt Runden mit Zeitlimit getrennt, ohne Limit bleibt der alte Schlüssel', () => {
+    const base = { length: 10, continent: 'Welt', difficulty: 'normal' } as const;
+    expect(recordKey({ ...base, tempo: 0 })).toBe(recordKey(base));
+    expect(recordKey({ ...base, tempo: 3 })).not.toBe(recordKey(base));
+  });
+});

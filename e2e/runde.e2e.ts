@@ -220,3 +220,27 @@ test('Größenvergleich: Zahl steht da, Deutschland erscheint erst auf Tipp', as
   await expect(page.locator('.context-map')).toHaveClass(/compare/);
   await expect(compare).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('Tempo: Zeit läuft ab, es geht von selbst weiter, danach Antworten durchgehen', async ({ page }) => {
+  await page.evaluate(() =>
+    localStorage.setItem('laenderquiz:einstellungen', JSON.stringify({ length: 2, continent: 'Europa', difficulty: 'normal', tempo: 2 })),
+  );
+  await page.reload();
+  await page.locator('.card', { hasText: 'Freies Spiel' }).click();
+  await expect(page.getByRole('button', { name: '2 s', exact: true })).toHaveClass(/selected/);
+  await page.locator('.card', { hasText: 'Los geht' }).click();
+  await expect(page.locator('.countdown')).toBeVisible();
+  // nichts tippen: nach 2 s ist die Zeit um
+  await expect(page.locator('.feedback')).toContainText('Zeit abgelaufen', { timeout: 4000 });
+  // nach kurzer Pause kommt Frage 2 von selbst
+  await expect(page.locator('.status')).toContainText('Frage 2', { timeout: 4000 });
+  await page.locator('.option').first().click();
+  await expect(page.locator('h1')).toHaveText('Geschafft!', { timeout: 4000 });
+  await page.locator('.card', { hasText: 'Antworten durchgehen' }).click();
+  await expect(page.locator('.status')).toContainText('Durchsicht · 1 von 2');
+  await expect(page.locator('.review-yours')).toHaveText('Zeit abgelaufen');
+  await page.locator('.card', { hasText: 'Nächstes Land' }).click();
+  await expect(page.locator('.status')).toContainText('2 von 2');
+  await page.locator('.card', { hasText: 'Zum Ergebnis' }).click();
+  await expect(page.locator('h1')).toHaveText('Geschafft!');
+});

@@ -9,6 +9,7 @@ import {
   filterCountries,
   isFinished,
   type Country,
+  type Question,
   type Round,
 } from './game';
 import germanySvg from './germany.svg?raw';
@@ -19,7 +20,7 @@ import { RANKED, rankedLabel, rankedSettings, type RankedMode } from './ranked';
 import { LeaderboardError, fetchTop, plausible, submitEntry } from './leaderboard';
 import { NAME_MAX, checkName } from './name';
 import { flagUrl } from './flags';
-import { loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
+import { TEMPOS, loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 const pool = (s: Settings) => filterCountries(allCountries, s);
@@ -212,6 +213,13 @@ function showSettings() {
         (v) => update({ difficulty: v }),
       ),
       el('p', { className: 'hint' }, ['„Schwer“ enthält auch 24 winzige Staaten wie Monaco oder Tuvalu.']),
+      el('h2', {}, ['Tempo']),
+      chips(
+        TEMPOS.map((t) => ({ label: t === 0 ? 'Ohne Limit' : `${t} s`, value: t })),
+        (v) => (settings.tempo ?? 0) === v,
+        (v) => update({ tempo: v }),
+      ),
+      el('p', { className: 'hint' }, ['Mit Limit hast du so viele Sekunden pro Land, danach kommt das nächste.']),
       card('Los geht’s', 'play', () => startRound(settings), 'primary', summary(settings, available)),
       el('button', { className: 'text-button', onclick: showStart }, ['Zurück']),
     ]),
@@ -373,6 +381,42 @@ async function showLeaderboard(mode: RankedMode = RANKED[0], highlight?: string)
   }
 }
 
+// Nach der Antwort: Umriss durch die Karte ersetzen (Land rot, falsche Wahl dunkel),
+// dazu Größenvergleich mit Deutschland. Ohne Netz bleibt der Umriss stehen.
+async function mountContext(stage: HTMLElement, shape: Element, question: Question, chosen: string | null, animate: boolean) {
+  const c = question.country;
+  if (!c.id || !c.center || c.radius === undefined) return;
+  const picked = question.options.find((o) => o.code === chosen && o.code !== c.code);
+  const wrong = picked ? { id: picked.id, center: picked.center, tiny: picked.tiny } : undefined;
+  try {
+    const map = await contextMap({ id: c.id, center: c.center, radius: c.radius, tiny: c.tiny, frame: c.frame, wrong });
+    if (!shape.isConnected) return; // inzwischen weitergeklickt
+    if (animate) map.classList.add('reveal');
+    shape.replaceWith(map);
+    if (animate) zoomOut(map, 500, 150);
+    else map.querySelectorAll('.marker').forEach((m) => m.classList.remove('away'));
+    enableGestures(map);
+    if (map.dataset.ratio) {
+      // Zahl immer, Deutschland-Silhouette nur auf Tipp, damit die Karte ruhig bleibt
+      const compare = el('button', { className: 'size-compare', ariaLabel: 'Deutschland zum Vergleich einblenden' }, [
+        germanyIcon(),
+        sizeComparison(Number(map.dataset.ratio)),
+      ]);
+      compare.setAttribute('aria-pressed', 'false');
+      compare.onclick = () => {
+        const on = map.classList.toggle('compare');
+        compare.setAttribute('aria-pressed', String(on));
+      };
+      stage.append(compare);
+    }
+  } catch {
+    // ohne Netz bleibt einfach der Umriss stehen
+  }
+}
+
+// Pause nach der Antwort im Tempo-Modus
+const AUTO_NEXT_MS = 1500;
+
 function showQuestion(round: Round) {
   if (isFinished(round)) return showResult(round);
   const question = currentQuestion(round)!;
@@ -381,35 +425,7 @@ function showQuestion(round: Round) {
   // Nach der Antwort zoomt das Bild aus dem Umriss heraus auf die Region (Kontext zum Lernen).
   // Die Weltkarte wird schon jetzt im Hintergrund geladen.
   preloadWorld();
-  const showContext = async (chosen?: string) => {
-    const c = question.country;
-    if (!c.id || !c.center || c.radius === undefined) return;
-    const picked = question.options.find((o) => o.code === chosen && o.code !== c.code);
-    const wrong = picked ? { id: picked.id, center: picked.center, tiny: picked.tiny } : undefined;
-    try {
-      const map = await contextMap({ id: c.id, center: c.center, radius: c.radius, tiny: c.tiny, frame: c.frame, wrong });
-      if (!shape.isConnected) return; // inzwischen weitergeklickt
-      map.classList.add('reveal');
-      shape.replaceWith(map);
-      zoomOut(map, 500, 150);
-      enableGestures(map);
-      if (map.dataset.ratio) {
-        // Zahl immer, Deutschland-Silhouette nur auf Tipp, damit die Karte ruhig bleibt
-        const compare = el('button', { className: 'size-compare', ariaLabel: 'Deutschland zum Vergleich einblenden' }, [
-          germanyIcon(),
-          sizeComparison(Number(map.dataset.ratio)),
-        ]);
-        compare.setAttribute('aria-pressed', 'false');
-        compare.onclick = () => {
-          const on = map.classList.toggle('compare');
-          compare.setAttribute('aria-pressed', String(on));
-        };
-        stage.append(compare);
-      }
-    } catch {
-      // ohne Netz bleibt einfach der Umriss stehen
-    }
-  };
+  const showContext = (chosen: string | null) => mountContext(stage, shape, question, chosen, true);
   const next = card('Weiter', 'arrow', () => {}, 'primary next');
   next.hidden = true;
 
@@ -456,9 +472,20 @@ function showQuestion(round: Round) {
   };
   const stage = el('div', { className: 'stage' }, [shape, flagButton]);
 
-  function choose(code: string) {
+  // Tempo: Balken läuft ab, danach zählt die Frage als falsch
+  const limitMs = (round.endless || activeRanked ? 0 : (active.tempo ?? 0)) * 1000;
+  const countdown = el('div', { className: 'countdown', hidden: !limitMs });
+  const countdownBar = el('div', { className: 'countdown-bar' });
+  countdown.append(countdownBar);
+  if (limitMs) countdownBar.style.animationDuration = `${limitMs}ms`;
+  const timeout = limitMs ? setTimeout(() => stage.isConnected && choose(null), limitMs) : undefined;
+
+  function choose(code: string | null) {
+    clearTimeout(timeout);
+    countdown.classList.add('stopped');
     if (!usedHint) flagButton.remove();
-    const result = answerQuestion(round, code, clock.elapsed(), usedHint);
+    const elapsed = code === null ? limitMs : Math.min(clock.elapsed(), limitMs || Infinity);
+    const result = answerQuestion(round, code, elapsed, usedHint);
     latest = result.round;
     buttons.forEach((button, i) => {
       button.disabled = true;
@@ -466,7 +493,11 @@ function showQuestion(round: Round) {
       if (optionCode === result.correctCountry.code) button.classList.add('correct');
       else if (optionCode === code) button.classList.add('wrong');
     });
-    feedback.textContent = result.correct ? 'Richtig!' : `Leider falsch. Das war ${result.correctCountry.name}.`;
+    feedback.textContent = result.correct
+      ? 'Richtig!'
+      : code === null
+        ? `Zeit abgelaufen. Das war ${result.correctCountry.name}.`
+        : `Leider falsch. Das war ${result.correctCountry.name}.`;
     feedback.className = `feedback ${result.correct ? 'good' : 'bad'}`;
     next.querySelector('.label')!.textContent = isFinished(result.round) ? 'Zum Ergebnis' : 'Weiter';
     next.onclick = () => showQuestion(result.round);
@@ -474,6 +505,8 @@ function showQuestion(round: Round) {
     showFlag();
     showContext(code);
     next.focus();
+    // Mit Zeitlimit geht es nach kurzer Pause von selbst weiter
+    if (limitMs) setTimeout(() => next.isConnected && next.click(), AUTO_NEXT_MS);
   }
 
   app.replaceChildren(
@@ -484,6 +517,7 @@ function showQuestion(round: Round) {
         el('span', {}, [`${round.score} richtig`]),
       ]),
       stage,
+      countdown,
       hintNote,
       el('div', { className: 'options' }, buttons),
       feedback,
@@ -522,24 +556,70 @@ function showResult(round: Round) {
       : el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord']), recordText(update.best, endless)]);
   }
   const entry = leaderboardEntry(round);
+  // Durchsicht kehrt zu genau diesem Bildschirm zurück (Rekord wird nicht erneut gewertet)
+  const back = () => app.replaceChildren(screen);
+  const screen = el('section', { className: 'screen result' }, [
+    el('p', { className: 'kicker' }, ['Ergebnis']),
+    el('h1', {}, ['Geschafft!']),
+    el('p', { className: 'score' }, [`${round.score} von ${total}`]),
+    el('p', { className: 'lead' }, [
+      (round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt') +
+        (round.hints > 0 ? ` · ${round.hints} mit Hinweis` : ''),
+    ]),
+    el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
+    record,
+    entry,
+    // Auf kleinen Displays ist neben dem Eintragsfeld kein Platz für die Karte
+    ...(entry.classList.contains('entry') ? [] : [map()]),
+    card('Neue Runde', 'again', newRound, 'primary', summary(active, pool(active).length)),
+    ...(round.answers.length > 0
+      ? [card('Antworten durchgehen', 'list', () => showReview(round, 0, back), 'secondary', 'Karte, Flagge und deine Antwort')]
+      : []),
+    activeRanked
+      ? card('Andere Rangliste', 'trophy', showRanked, 'secondary')
+      : card('Einstellungen', 'settings', showSettings, 'secondary'),
+  ]);
+  app.replaceChildren(screen);
+}
+
+// Durchsicht: jede Frage noch einmal mit Karte, Flagge und eigener Antwort, in Ruhe
+function showReview(round: Round, i: number, back: () => void) {
+  const question = round.questions[i];
+  const chosen = round.answers[i] ?? null;
+  const correct = chosen === question.country.code;
+  const total = round.answers.length;
+  const shape = outline(question.country);
+  const url = flagUrl(question.country.code);
+  const stage = el('div', { className: 'stage' }, [
+    shape,
+    ...(url ? [el('img', { className: 'flag-hint-image', src: url, alt: `Flagge von ${question.country.name}` })] : []),
+  ]);
+  mountContext(stage, shape, question, chosen, false);
+  const picked = question.options.find((o) => o.code === chosen);
+  const yours = chosen === null ? 'Zeit abgelaufen' : (picked?.name ?? '');
+  const prev = el('button', { className: 'chip', disabled: i === 0, onclick: () => showReview(round, i - 1, back) }, ['‹ Zurück']);
+  const next =
+    i + 1 < total
+      ? card('Nächstes Land', 'arrow', () => showReview(round, i + 1, back), 'primary next')
+      : card('Zum Ergebnis', 'arrow', back, 'primary next');
   app.replaceChildren(
-    el('section', { className: 'screen result' }, [
-      el('p', { className: 'kicker' }, ['Ergebnis']),
-      el('h1', {}, ['Geschafft!']),
-      el('p', { className: 'score' }, [`${round.score} von ${total}`]),
-      el('p', { className: 'lead' }, [
-        (round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt') +
-          (round.hints > 0 ? ` · ${round.hints} mit Hinweis` : ''),
+    el('section', { className: 'screen game review' }, [
+      el('header', { className: 'status' }, [
+        el('span', {}, [`Durchsicht · ${i + 1} von ${total}`]),
+        el('span', { className: correct ? 'good' : 'bad' }, [correct ? 'Richtig' : 'Falsch']),
       ]),
-      el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
-      record,
-      entry,
-      // Auf kleinen Displays ist neben dem Eintragsfeld kein Platz für die Karte
-      ...(entry.classList.contains('entry') ? [] : [map()]),
-      card('Neue Runde', 'again', newRound, 'primary', summary(active, pool(active).length)),
-      activeRanked
-        ? card('Andere Rangliste', 'trophy', showRanked, 'secondary')
-        : card('Einstellungen', 'settings', showSettings, 'secondary'),
+      stage,
+      el('div', { className: 'review-answer' }, [
+        el('p', { className: 'review-country' }, [question.country.name]),
+        ...(correct
+          ? []
+          : [el('p', { className: 'review-yours' }, chosen === null ? [yours] : ['Deine Antwort: ', el('s', {}, [yours])])]),
+      ]),
+      next,
+      el('div', { className: 'review-nav' }, [
+        prev,
+        el('button', { className: 'text-button', onclick: back }, ['Zum Ergebnis']),
+      ]),
     ]),
   );
 }

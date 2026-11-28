@@ -20,3 +20,13 @@ describe('Einstellungen speichern und anzeigen', () => {
     expect(summary({ length: 1, continent: 'Europa', difficulty: 'normal' }, 40)).toBe('1 Land · Europa · Normal');
   });
 });
+
+describe('Tempo', () => {
+  it('übernimmt nur erlaubte Werte', () => {
+    expect(normalize({ tempo: 3 }, 169).tempo).toBe(3);
+    expect(normalize({ tempo: 4 }, 169).tempo).toBe(0);
+  });
+  it('steht in der Zusammenfassung, wenn gesetzt', () => {
+    expect(summary({ ...DEFAULT_SETTINGS, tempo: 2 }, 169)).toBe('10 Länder · Welt · Normal · 2 s pro Land');
+  });
+});

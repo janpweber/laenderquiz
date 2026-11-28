@@ -23,8 +23,9 @@ export const STANDARD: Pick<Settings, 'length' | 'continent' | 'difficulty'> = {
   difficulty: 'normal',
 };
 
-export function recordKey(s: Pick<Settings, 'length' | 'continent' | 'difficulty'>): string {
-  return [s.length, s.continent, s.difficulty].join('|');
+// Mit Zeitlimit eigener Rekord; ohne bleibt der Schlüssel wie bisher
+export function recordKey(s: Pick<Settings, 'length' | 'continent' | 'difficulty' | 'tempo'>): string {
+  return [s.length, s.continent, s.difficulty, ...(s.tempo ? [`${s.tempo}s`] : [])].join('|');
 }
 
 export function isStandard(s: Pick<Settings, 'length' | 'continent' | 'difficulty'>): boolean {

@@ -25,6 +25,8 @@ export interface Round {
   totalMs: number;
   // Fragen, bei denen die Flagge als Hinweis aufgedeckt wurde
   hints: number;
+  // Gewählte Antwort je Frage (Ländercode), null = Zeit abgelaufen. Für die Durchsicht.
+  answers: (string | null)[];
 }
 
 export type RoundLength = number | 'endlos';
@@ -96,7 +98,7 @@ export function createRound(countries: Country[], settings: RoundSettings, rng: 
     const distractors = pickDistractors(country, countries, rng);
     return { country, options: shuffle([country, ...distractors], rng) };
   });
-  return { questions, index: 0, score: 0, endless, totalMs: 0, hints: 0 };
+  return { questions, index: 0, score: 0, endless, totalMs: 0, hints: 0, answers: [] };
 }
 
 // Endlosmodus: Runde nach der aktuellen Frage beenden; gewertet wird, was beantwortet ist
@@ -112,10 +114,11 @@ export function isFinished(round: Round): boolean {
   return round.index >= round.questions.length;
 }
 
-export function answerQuestion(round: Round, code: string, elapsedMs = 0, usedHint = false): AnswerResult {
+// code null: Zeit abgelaufen, zählt als falsch
+export function answerQuestion(round: Round, code: string | null, elapsedMs = 0, usedHint = false): AnswerResult {
   const question = currentQuestion(round);
   if (!question) throw new Error('Runde ist bereits beendet');
-  const correct = code === question.country.code;
+  const correct = code !== null && code === question.country.code;
   return {
     correct,
     correctCountry: question.country,
@@ -125,6 +128,7 @@ export function answerQuestion(round: Round, code: string, elapsedMs = 0, usedHi
       score: round.score + (correct ? 1 : 0),
       totalMs: round.totalMs + Math.max(0, elapsedMs),
       hints: round.hints + (usedHint ? 1 : 0),
+      answers: [...(round.answers ?? []), code],
     },
   };
 }
