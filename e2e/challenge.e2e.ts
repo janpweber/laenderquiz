@@ -45,7 +45,7 @@ test('Challenge erstellen, per Link spielen, Rangliste und Versuche', async ({ b
   await page.reload();
 
   // Jan legt eine Challenge an
-  await page.locator('.card', { hasText: 'Challenge erstellen' }).click();
+  await page.locator('.card', { hasText: 'Freunde herausfordern' }).click();
   await page.getByLabel('Name der Challenge').fill('Büro-Challenge');
   await page.getByLabel('Dein Name').fill('Jan');
   await page.getByRole('button', { name: 'Europa' }).click();
