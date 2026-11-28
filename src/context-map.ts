@@ -1,6 +1,6 @@
 // Kontextkarte: das gesuchte Land rot in seiner Region, Nachbarn grau.
 // Die Weltkarte (Natural Earth 50m, ca. 240 KB) wird erst beim ersten Öffnen geladen.
-import { geoAzimuthalEqualArea, geoCircle, geoPath, type GeoPermissibleObjects } from 'd3-geo';
+import { geoArea, geoAzimuthalEqualArea, geoCentroid, geoCircle, geoPath, type GeoPermissibleObjects } from 'd3-geo';
 import { feature } from 'topojson-client';
 import type { Feature, FeatureCollection } from 'geojson';
 
@@ -21,6 +21,7 @@ const W = 1000;
 // gleiches Seitenverhältnis wie die Umriss-Karte im Spiel (1.45), damit keine Ränder bleiben
 const H = 690;
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const GERMANY_ID = '276';
 
 let world: Promise<Feature[]> | undefined;
 // Schon beim Anzeigen der Frage laden, damit die Karte nach der Antwort sofort da ist
@@ -95,6 +96,18 @@ export async function contextMap(country: MapCountry): Promise<SVGSVGElement> {
   const wrong = country.wrong;
   if (wrong?.center && (wrong.tiny || !features.some((f) => String(f.id) === wrong.id))) ring(wrong.center, 'marker wrong-marker');
   if (country.tiny || !features.some((f) => String(f.id) === country.id)) ring([lon, lat], 'marker');
+
+  // Größenvergleich: Deutschland im selben Maßstab über das Land gelegt. Die Projektion ist
+  // flächentreu, darum stimmen die Flächen auch optisch.
+  const germany = features.find((f) => String(f.id) === GERMANY_ID);
+  const target = features.find((f) => String(f.id) === country.id);
+  if (germany && target && country.id !== GERMANY_ID) {
+    const [glon, glat] = geoCentroid(germany);
+    const there = projection([lon, lat]) ?? [W / 2, H / 2];
+    const overlay = geoAzimuthalEqualArea().rotate([-glon, -glat]).scale(projection.scale()).translate(there);
+    add(geoPath(overlay)(germany), 'germany');
+    svg.dataset.ratio = String(geoArea(target) / geoArea(germany));
+  }
   return svg;
 }
 
@@ -240,4 +253,14 @@ export function enableGestures(svg: SVGSVGElement): void {
     },
     { passive: false },
   );
+}
+
+// Text für den Größenvergleich, z. B. „2,3 × so groß wie Deutschland“
+export function sizeComparison(ratio: number): string {
+  const fmt = (x: number) =>
+    x >= 10 ? String(Math.round(x)) : x.toLocaleString('de-DE', { maximumFractionDigits: 1, minimumFractionDigits: 0 });
+  if (ratio >= 0.95 && ratio <= 1.05) return 'etwa so groß wie Deutschland';
+  if (ratio > 1) return `${fmt(ratio)} × so groß wie Deutschland`;
+  const inverse = 1 / ratio;
+  return inverse >= 1000 ? 'Deutschland ist über 1000 × so groß' : `Deutschland ist ${fmt(inverse)} × so groß`;
 }

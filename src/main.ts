@@ -12,7 +12,7 @@ import {
   type Round,
 } from './game';
 import germanySvg from './germany.svg?raw';
-import { contextMap, enableGestures, preloadWorld, zoomOut } from './context-map';
+import { contextMap, enableGestures, preloadWorld, sizeComparison, zoomOut } from './context-map';
 import { formatTime, startQuestionClock } from './timer';
 import { browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
 import { RANKED, rankedLabel, rankedSettings, type RankedMode } from './ranked';
@@ -380,6 +380,9 @@ function showQuestion(round: Round) {
       shape.replaceWith(map);
       zoomOut(map, 500, 150);
       enableGestures(map);
+      if (map.dataset.ratio) {
+        stage.append(el('p', { className: 'size-compare' }, [sizeComparison(Number(map.dataset.ratio))]));
+      }
     } catch {
       // ohne Netz bleibt einfach der Umriss stehen
     }
