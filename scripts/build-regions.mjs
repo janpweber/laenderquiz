@@ -3,13 +3,14 @@
 // aus der Mitte wie Konfetti auseinander und setzen sich in einer durchgehenden Bewegung zur Karte zusammen.
 // Umrisse aus Natural Earth 110m (world-atlas, Public Domain), grob genug für kleine Dateien.
 // Ausführen mit: node scripts/build-regions.mjs
+import { ukrainianCrimea } from '../src/crimea.js';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { feature, merge } from 'topojson-client';
 import { geoAzimuthalEqualArea, geoConicConformal, geoConicEqualArea, geoEqualEarth, geoPath } from 'd3-geo';
 
 const require = createRequire(import.meta.url);
-const topology = require('world-atlas/countries-110m.json');
+const topology = ukrainianCrimea(require('world-atlas/countries-110m.json'));
 const countries = JSON.parse(readFileSync(new URL('../src/countries.generated.json', import.meta.url), 'utf8'));
 const geometries = topology.objects.countries.geometries;
 const continentOf = new Map(countries.map((c) => [c.id, c.continent]));

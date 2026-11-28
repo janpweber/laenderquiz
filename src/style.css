@@ -477,7 +477,22 @@ button {
 .review-answer p { margin: 0; }
 .review-country { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; }
 .review-yours { font-weight: 700; color: var(--grey-dark); }
-.review-nav { display: flex; justify-content: space-between; align-items: center; }
+.review-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.review-step {
+  min-height: 56px;
+  padding: 0 12px;
+  background: var(--white);
+  border: 2px solid var(--red);
+  border-radius: 999px;
+  color: var(--black);
+  font: inherit;
+  font-weight: 900;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.review-step:disabled { border-color: transparent; color: var(--grey-dark); opacity: 0.45; cursor: default; }
 
 /* Challenges */
 .conditions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -490,3 +505,6 @@ button {
 .region-art svg, .region-logo svg { margin: 0 auto; max-width: 100%; }
 .region-logo { height: 84px; margin: 0 auto; }
 .region-art.small { height: min(16dvh, 130px); }
+
+/* Zurück aus der Durchsicht: nur zusammensetzen, keine Explosion */
+.region-art.assemble .burst { animation: none; }
