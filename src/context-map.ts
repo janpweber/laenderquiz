@@ -3,6 +3,7 @@
 import { geoArea, geoAzimuthalEqualArea, geoCentroid, geoCircle, geoPath, type GeoPermissibleObjects } from 'd3-geo';
 import { feature } from 'topojson-client';
 import type { Feature, FeatureCollection } from 'geojson';
+import { ukrainianCrimea } from './crimea.js';
 
 export interface MapCountry {
   id: string;
@@ -32,7 +33,8 @@ export function preloadWorld(): void {
 }
 function loadWorld(): Promise<Feature[]> {
   world ??= import('world-atlas/countries-50m.json').then((m) => {
-    const topology = (m.default ?? m) as any;
+    // Krim zur Ukraine, wie im Umriss (siehe crimea.js)
+    const topology = ukrainianCrimea((m.default ?? m) as any);
     return (feature(topology, topology.objects.countries) as unknown as FeatureCollection).features;
   });
   return world;

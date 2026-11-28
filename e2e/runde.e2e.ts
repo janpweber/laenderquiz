@@ -239,8 +239,11 @@ test('Tempo: Zeit läuft ab, es geht von selbst weiter, danach Antworten durchge
   await page.locator('.card', { hasText: 'Antworten durchgehen' }).click();
   await expect(page.locator('.status')).toContainText('Durchsicht · 1 von 2');
   await expect(page.locator('.review-yours')).toHaveText('Zeit abgelaufen');
-  await page.locator('.card', { hasText: 'Nächstes Land' }).click();
+  await page.getByRole('button', { name: 'Nächstes Land ›' }).click();
   await expect(page.locator('.status')).toContainText('2 von 2');
-  await page.locator('.card', { hasText: 'Zum Ergebnis' }).click();
+  await expect(page.getByRole('button', { name: '‹ Vorheriges Land' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Zum Ergebnis ›' }).click();
+  // zurück auf Geschafft: Bild setzt sich nur zusammen, ohne Explosion
+  await expect(page.locator('.region-art')).toHaveClass(/assemble/);
   await expect(page.locator('h1')).toHaveText('Geschafft!');
 });

@@ -602,7 +602,11 @@ function showResult(round: Round) {
   }
   const entry = leaderboardEntry(round);
   // Durchsicht kehrt zu genau diesem Bildschirm zurück (Rekord wird nicht erneut gewertet)
-  const back = () => app.replaceChildren(screen);
+  // Zurück aus der Durchsicht: Bild nur zusammensetzen, ohne erneute Explosion
+  const back = () => {
+    screen.querySelector('.region-art')?.classList.add('assemble');
+    app.replaceChildren(screen);
+  };
   const screen = el('section', { className: 'screen result' }, [
     // Regionen-Bild oben; neben dem Eintragsfeld kleiner, damit alles auf den Bildschirm passt
     withClass(regionArt(active.continent), entry.classList.contains('entry') ? 'small' : ''),
@@ -643,11 +647,14 @@ function showReview(round: Round, i: number, back: () => void) {
   mountContext(stage, shape, question, chosen, false);
   const picked = question.options.find((o) => o.code === chosen);
   const yours = chosen === null ? 'Zeit abgelaufen' : (picked?.name ?? '');
-  const prev = el('button', { className: 'chip', disabled: i === 0, onclick: () => showReview(round, i - 1, back) }, ['‹ Zurück']);
+  // Vor und zurück gleichwertig nebeneinander
+  const prev = el('button', { className: 'review-step', disabled: i === 0, onclick: () => showReview(round, i - 1, back) }, [
+    '‹ Vorheriges Land',
+  ]);
   const next =
     i + 1 < total
-      ? card('Nächstes Land', 'arrow', () => showReview(round, i + 1, back), 'primary next')
-      : card('Zum Ergebnis', 'arrow', back, 'primary next');
+      ? el('button', { className: 'review-step', onclick: () => showReview(round, i + 1, back) }, ['Nächstes Land ›'])
+      : el('button', { className: 'review-step', onclick: back }, ['Zum Ergebnis ›']);
   app.replaceChildren(
     el('section', { className: 'screen game review' }, [
       el('header', { className: 'status' }, [
@@ -661,11 +668,8 @@ function showReview(round: Round, i: number, back: () => void) {
           ? []
           : [el('p', { className: 'review-yours' }, chosen === null ? [yours] : ['Deine Antwort: ', el('s', {}, [yours])])]),
       ]),
-      next,
-      el('div', { className: 'review-nav' }, [
-        prev,
-        el('button', { className: 'text-button', onclick: back }, ['Zum Ergebnis']),
-      ]),
+      el('div', { className: 'review-nav' }, [prev, next]),
+      ...(i + 1 < total ? [el('button', { className: 'text-button', onclick: back }, ['Zum Ergebnis'])] : []),
     ]),
   );
 }
@@ -914,7 +918,11 @@ function showChallengeResult(round: Round, current: NonNullable<typeof activeCha
   const total = round.questions.length;
   const left = challenge.versuche - attemptsUsed(browserStore(), challenge.id);
   const status = el('p', { className: 'form-message center', ariaLive: 'polite' }, ['Ergebnis wird eingetragen …']);
-  const back = () => app.replaceChildren(screen);
+  // Zurück aus der Durchsicht: Bild nur zusammensetzen, ohne erneute Explosion
+  const back = () => {
+    screen.querySelector('.region-art')?.classList.add('assemble');
+    app.replaceChildren(screen);
+  };
   const screen = el('section', { className: 'screen result' }, [
     withClass(regionArt(challenge.region), 'small'),
     el('p', { className: 'kicker' }, [`Challenge · ${challenge.titel}`]),

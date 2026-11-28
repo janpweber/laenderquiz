@@ -7,6 +7,7 @@
 // - Namen, Regionen, Fläche: world-countries (ODbL)
 //
 // Ausführen mit: npm run build:data
+import { ukrainianCrimea } from '../src/crimea.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { feature } from 'topojson-client';
@@ -46,8 +47,9 @@ function featuresById(topology) {
   }
   return byId;
 }
-const features50 = featuresById(readJson('world-atlas/countries-50m.json'));
-const features10 = featuresById(readJson('world-atlas/countries-10m.json'));
+// Krim zur Ukraine (siehe src/crimea.js)
+const features50 = featuresById(ukrainianCrimea(readJson('world-atlas/countries-50m.json')));
+const features10 = featuresById(ukrainianCrimea(readJson('world-atlas/countries-10m.json')));
 
 // Kerngebiet: vom größten Teil aus werden alle Teile aufgenommen, die höchstens
 // 400 km von einem bereits aufgenommenen Teil entfernt liegen (Inselketten wie
