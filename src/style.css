@@ -379,22 +379,6 @@ button {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-/* Kopfzeile im Spiel: Badge links, Abbrechen-X rechts */
-.game-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
-.game-top .badge { align-self: center; }
-.quit {
-  margin-left: auto;
-  flex: none;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: none;
-  color: var(--black);
-  display: grid;
-  place-items: center;
-}
-.quit .icon { width: 28px; height: 28px; background: none; border: none; display: grid; place-items: center; }
-.quit svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .leaderboard .chips { justify-content: center; }
 /* Ranglisten-Karte auf dem Start: schwarz, damit sie vor Grau und Rot heraussticht */
 .card.highlight { background: var(--black); color: var(--white); }
@@ -483,7 +467,26 @@ button {
 /* Tempo: Balken unter dem Umriss läuft in der eingestellten Zeit ab */
 .countdown { height: 6px; background: #d4d4d4; border-radius: 3px; overflow: hidden; }
 .countdown-bar { height: 100%; background: var(--red); transform-origin: left; animation: countdown linear both; }
-.countdown.stopped .countdown-bar { animation-play-state: paused; }
+.countdown.stopped .countdown-bar, .countdown.paused .countdown-bar { animation-play-state: paused; }
+
+/* Rückfrage beim Abbrechen einer Challenge: schwarz, damit Umriss und Antworten verdeckt sind */
+.abort-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--black);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px max(16px, calc((100vw - 480px) / 2));
+  text-align: center;
+}
+.abort-question { margin: 0; font-size: 1.6rem; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
+.abort-detail { margin: 0 0 10px; font-size: 1.05rem; }
+.abort-overlay .card { color: var(--black); text-align: left; }
+.abort-overlay .text-button { color: var(--white); }
 @keyframes countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 /* Durchsicht nach der Runde */

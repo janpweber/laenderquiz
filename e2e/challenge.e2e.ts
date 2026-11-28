@@ -133,3 +133,33 @@ test('unbekannter Challenge-Link', async ({ page, context }) => {
   await page.goto('./?c=zzzzzzzz');
   await expect(page.locator('h1')).toHaveText('Challenge nicht gefunden');
 });
+
+test('Challenge abbrechen: schwarze Rückfrage, Versuch ist verbraucht', async ({ page, context }) => {
+  const db = fakeChallenges();
+  await db.install(context);
+  await page.goto('./');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.locator('.card', { hasText: 'Freunde herausfordern' }).click();
+  await page.getByLabel('Name der Challenge').fill('Abbruch-Test');
+  await page.getByLabel('Dein Name').fill('Jan');
+  await page.locator('.chips').nth(4).getByRole('button', { name: '3', exact: true }).click();
+  await page.locator('.card', { hasText: 'Challenge erstellen' }).click();
+  await page.locator('.card', { hasText: 'Selbst spielen' }).click();
+  await page.locator('.card', { hasText: 'Los geht' }).click();
+  await page.locator('.option').first().click();
+
+  // Rückfrage verdeckt das Spiel, „Weiterspielen“ macht an derselben Stelle weiter
+  await page.getByRole('button', { name: 'Quiz abbrechen' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Dein Versuch ist dann verbraucht.');
+  await dialog.getByRole('button', { name: 'Weiterspielen' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.feedback')).not.toBeEmpty();
+
+  await page.getByRole('button', { name: 'Quiz abbrechen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Beenden' }).click();
+  await expect(page.locator('h1')).toHaveText('Jan fordert dich heraus');
+  await expect(page.locator('.card', { hasText: 'Versuch 2 von 3' })).toBeVisible();
+  expect(db.results).toHaveLength(0);
+});

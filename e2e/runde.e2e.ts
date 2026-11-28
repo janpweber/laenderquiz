@@ -281,7 +281,7 @@ test('Üben: Fehler wiederholen und Länder der letzten Runde üben', async ({ p
   }
 });
 
-test('laufendes Quiz lässt sich mit dem X abbrechen', async ({ page }) => {
+test('laufendes Quiz lässt sich abbrechen, nach der letzten Antwort nicht mehr', async ({ page }) => {
   await page.locator('.card', { hasText: 'Rangliste' }).click();
   await page.locator('.card', { hasText: 'Ganze Welt' }).click();
   await answerAll(page, 2);
@@ -289,4 +289,20 @@ test('laufendes Quiz lässt sich mit dem X abbrechen', async ({ page }) => {
   await expect(page.locator('.start')).toBeVisible();
   // kein Rekord, weil die Runde nicht fertig gespielt wurde
   await expect(page.locator('.start .record')).toHaveCount(0);
+
+  await page.locator('.card', { hasText: 'Rangliste' }).click();
+  await page.locator('.card', { hasText: 'Europa' }).click();
+  await answerAll(page, 4);
+  await expect(page.getByRole('button', { name: 'Quiz abbrechen' })).toBeVisible();
+  await page.locator('.option').first().click();
+  await expect(page.locator('.next')).toContainText('Zum Ergebnis');
+  await expect(page.getByRole('button', { name: 'Quiz abbrechen' })).toBeHidden();
+});
+
+test('im Endlosmodus gibt es nur „Runde beenden“', async ({ page }) => {
+  await page.locator('.card', { hasText: 'Freies Spiel' }).click();
+  await page.locator('.chip', { hasText: 'Endlos' }).click();
+  await page.locator('.card', { hasText: 'Los geht' }).click();
+  await expect(page.getByRole('button', { name: 'Runde beenden' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Quiz abbrechen' })).toBeHidden();
 });

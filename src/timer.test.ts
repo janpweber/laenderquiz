@@ -11,6 +11,21 @@ function fakeClock() {
 }
 
 describe('Zeitmessung', () => {
+  it('zählt angehaltene Zeit nicht mit', () => {
+    const clock = fakeClock();
+    const q = startQuestionClock(clock.now);
+    clock.advance(2000);
+    q.pause();
+    clock.advance(10_000);
+    expect(q.elapsed()).toBe(2000);
+    q.pause();
+    q.resume();
+    clock.advance(500);
+    expect(q.elapsed()).toBe(2500);
+    q.resume();
+    expect(q.elapsed()).toBe(2500);
+  });
+
   it('summiert die Antwortzeiten, die Rückmeldungs-Pause zählt nicht', () => {
     const clock = fakeClock();
     let round = createRound(countries, { length: 3 }, () => 0.3);
