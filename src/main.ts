@@ -12,7 +12,7 @@ import {
   type Round,
 } from './game';
 import germanySvg from './germany.svg?raw';
-import { contextMap } from './context-map';
+import { contextMap, enableGestures, preloadWorld, zoomOut } from './context-map';
 import { formatTime, startQuestionClock } from './timer';
 import { browserStore, loadRecords, recordKey, submitResult, type RecordEntry } from './record';
 import { RANKED, rankedLabel, rankedSettings, type RankedMode } from './ranked';
@@ -365,26 +365,23 @@ function showQuestion(round: Round) {
   const question = currentQuestion(round)!;
   const feedback = el('p', { className: 'feedback', ariaLive: 'polite' });
   const shape = outline(question.country);
-  let mapView: SVGSVGElement | undefined;
-  // Nach der Antwort: Land in seiner Region zeigen, zum Lernen
-  const mapToggle = el('button', { className: 'text-button', hidden: true }, ['Auf der Karte zeigen']);
-  mapToggle.onclick = async () => {
-    const showingMap = mapView?.isConnected;
-    if (showingMap) {
-      mapView!.replaceWith(shape);
-      mapToggle.textContent = 'Auf der Karte zeigen';
-      return;
-    }
+  // Nach der Antwort zoomt das Bild aus dem Umriss heraus auf die Region (Kontext zum Lernen).
+  // Die Weltkarte wird schon jetzt im Hintergrund geladen.
+  preloadWorld();
+  const showContext = async (chosen?: string) => {
     const c = question.country;
     if (!c.id || !c.center || c.radius === undefined) return;
-    mapToggle.textContent = 'Karte lädt …';
+    const picked = question.options.find((o) => o.code === chosen && o.code !== c.code);
+    const wrong = picked ? { id: picked.id, center: picked.center, tiny: picked.tiny } : undefined;
     try {
-      mapView ??= await contextMap({ id: c.id, center: c.center, radius: c.radius, tiny: c.tiny });
-      shape.replaceWith(mapView);
-      showFlag();
-      mapToggle.textContent = 'Umriss zeigen';
+      const map = await contextMap({ id: c.id, center: c.center, radius: c.radius, tiny: c.tiny, frame: c.frame, wrong });
+      if (!shape.isConnected) return; // inzwischen weitergeklickt
+      map.classList.add('reveal');
+      shape.replaceWith(map);
+      zoomOut(map, 500, 150);
+      enableGestures(map);
     } catch {
-      mapToggle.textContent = 'Karte konnte nicht geladen werden';
+      // ohne Netz bleibt einfach der Umriss stehen
     }
   };
   const next = card('Weiter', 'arrow', () => {}, 'primary next');
@@ -448,7 +445,8 @@ function showQuestion(round: Round) {
     next.querySelector('.label')!.textContent = isFinished(result.round) ? 'Zum Ergebnis' : 'Weiter';
     next.onclick = () => showQuestion(result.round);
     next.hidden = false;
-    mapToggle.hidden = false;
+    showFlag();
+    showContext(code);
     next.focus();
   }
 
@@ -463,7 +461,6 @@ function showQuestion(round: Round) {
       hintNote,
       el('div', { className: 'options' }, buttons),
       feedback,
-      mapToggle,
       next,
       ...(round.endless
         ? [el('button', { className: 'text-button', onclick: () => finish(endRound(latest)) }, ['Runde beenden'])]

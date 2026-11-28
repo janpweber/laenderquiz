@@ -162,14 +162,43 @@ test('freies Spiel zählt nie für die Bestenliste, auch mit Ranglisten-Einstell
   await expect(page.locator('.entry input')).toHaveCount(0);
 });
 
-test('auf der Karte erscheint auch die Flagge, ohne als Hinweis zu zählen', async ({ page }) => {
+test('nach der Antwort: Flagge und Karte erscheinen von selbst, ohne als Hinweis zu zählen', async ({ page }) => {
   await page.locator('.card', { hasText: 'Rangliste' }).click();
   await page.locator('.card', { hasText: 'Europa' }).click();
+  await expect(page.locator('.outline')).toBeVisible();
   await page.locator('.option').first().click();
   await expect(page.locator('.flag-hint')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Auf der Karte zeigen' }).click();
-  await expect(page.locator('.context-map')).toBeVisible();
   await expect(page.locator('.flag-hint-image')).toBeVisible();
+  await expect(page.locator('.context-map')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Auf der Karte zeigen' })).toHaveCount(0);
   await expect(page.locator('.badge')).toBeVisible();
   await expect(page.locator('.hint-note')).toBeHidden();
+});
+
+test('falsche Antwort: das gewählte Land ist auf der Karte dunkel markiert, Karte lässt sich zoomen', async ({ page }) => {
+  await page.locator('.card', { hasText: 'Rangliste' }).click();
+  await page.locator('.card', { hasText: 'Europa' }).click();
+  // so lange antworten, bis eine Antwort falsch ist
+  for (let i = 0; i < 5; i++) {
+    await page.locator('.option').nth(1).click();
+    await expect(page.locator('.context-map')).toBeVisible();
+    if ((await page.locator('.option.wrong').count()) > 0) break;
+    await expect(page.locator('.context-map .wrong')).toHaveCount(0);
+    await page.locator('.next').click();
+  }
+  await expect(page.locator('.context-map .wrong')).toHaveCount(1);
+  // nach dem Zoom per Mausrad hineinzoomen: der Ausschnitt wird kleiner
+  await page.waitForTimeout(900);
+  const map = page.locator('.context-map');
+  const width = async () => Number((await map.getAttribute('viewBox'))!.split(' ')[2]);
+  const before = await width();
+  await map.hover();
+  await page.mouse.wheel(0, -300);
+  expect(await width()).toBeLessThan(before);
+  // näher als der Umriss am Anfang geht es nicht
+  for (let i = 0; i < 20; i++) await page.mouse.wheel(0, -300);
+  const closest = await width();
+  await page.mouse.wheel(0, -300);
+  expect(await width()).toBeCloseTo(closest, 3);
+  expect(closest).toBeGreaterThan(50);
 });

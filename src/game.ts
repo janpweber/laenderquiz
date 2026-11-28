@@ -8,6 +8,7 @@ export interface Country {
   id?: string;
   center?: number[];
   radius?: number;
+  frame?: number[];
 }
 
 export interface Question {

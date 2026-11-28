@@ -93,13 +93,15 @@ function fixWinding(f) {
 
 const SIZE = 1000;
 const PADDING = 40;
-function outlinePath(f) {
+function outlineProjection(f) {
   // Flächentreue Projektion, auf das Land zentriert: so wird nichts verzerrt
   const [lon, lat] = geoCentroid(f);
-  const projection = geoAzimuthalEqualArea()
+  return geoAzimuthalEqualArea()
     .rotate([-lon, -lat])
     .fitExtent([[PADDING, PADDING], [SIZE - PADDING, SIZE - PADDING]], f);
-  return geoPath(projection).digits(1)(f);
+}
+function outlinePath(f) {
+  return geoPath(outlineProjection(f)).digits(1)(f);
 }
 
 const MIN_POINTS = 60;
@@ -127,6 +129,8 @@ const countries = readJson('world-countries/countries.json')
       continent: continentOf(c),
       subregion: c.subregion,
       tiny: c.area < TINY_AREA_KM2,
+      // Maßstab und Verschiebung des Umrisses, damit die Kontextkarte nahtlos aus dem Umriss herauszoomen kann
+      frame: [outlineProjection(core).scale(), ...outlineProjection(core).translate()].map((v) => Math.round(v * 100) / 100),
       path: outlinePath(core),
     };
   })
