@@ -1,25 +1,27 @@
-# 009 – Hinweise: Flagge und Größenvergleich
+# 009 – Hinweis: Flagge
 
 PRD: docs/prd/laenderquiz.md
 Typ: HITL (Aussehen der Flaggen am Handy reviewen)
-Blockiert durch: 008 (erst nach dem MVP)
-Status: zurückgestellt, Variante nach dem MVP entscheiden
+Blockiert durch: 008
+Status: umgesetzt, wartet auf Jans Review
 
-## Was
-Während einer Frage gibt es einen Button „Hinweis“. Tippt man darauf, erscheint eine Flagge als Hinweis. Offen ist, ob es die Flagge des gesuchten Landes ist (Empfehlung, echter Hinweis) oder die Flaggen an allen 4 Antworten. Pro Frage gibt es einen Hinweis.
+## Was (entschieden am 28.11.2026 mit Jan)
+- Gezeigt wird die **echte Flagge des gesuchten Landes**, unverzerrt, klein oben rechts in der Umriss-Karte (mit weißem Rand, fliegt kurz herein). Verworfen: Flaggen an allen 4 Antworten, Umriss mit der Flagge füllen (Beispiele in Varianten A–E), Dreiecksstil.
+- An derselben Stelle steht vorher „Flagge zeigen“. Ein Tipp ersetzt den Text durch die Flagge. Nach der Antwort verschwindet der Knopf, eine aufgedeckte Flagge bleibt sichtbar.
+- **Freies Spiel:** kostet keine Punkte, im Ergebnis steht „n mit Hinweis“.
+- **Ranglisten-Runde:** ebenfalls erlaubt, ohne Rückfrage. Danach verschwindet das Ranglisten-Abzeichen, unter dem Umriss steht dauerhaft „Mit Hinweis, zählt nicht für die Bestenliste“, am Ende kein Eintragsfeld.
+- Runden mit Hinweis verbessern den persönlichen Rekord nicht.
+- Flaggen: flag-icons (MIT), als einzelne SVG-Dateien, die erst beim Aufdecken geladen werden.
 
-Zweiter Hinweis (Idee von Jan): **Größenvergleich mit Deutschland.** Der Umriss allein verrät nichts über die Größe. Ein Knopf blendet Deutschland im selben Maßstab ein, als schwarze Kontur neben oder über dem gesuchten Land. Ist das Land viel größer als Deutschland, wird Deutschland klein eingeblendet, ist es viel kleiner, wird das Land neben einem großen Deutschland gezeigt. Dafür braucht jedes Land seinen Maßstab (Fläche bzw. Projektionsfaktor) in den Länderdaten. Die Flaggen kommen als SVG aus einer frei lizenzierten Quelle (z. B. flag-icons, MIT) und werden mit ausgeliefert, nur für die 193 UN-Staaten.
-
-Annahme (bei Bedarf ändern): In der Standardrunde für die Bestenliste ist der Hinweis ausgeblendet, damit die Liste fair bleibt. In allen anderen Runden zählt eine Antwort mit Hinweis normal.
+Der **Größenvergleich mit Deutschland** wird getrennt umgesetzt (eigene Aufgabe, noch zu klären: Zahl oder Grafik, Platz, Wertung).
 
 ## Akzeptanzkriterien
-- [ ] Größenvergleich: Deutschland und das gesuchte Land im gleichen Maßstab, für sehr große und sehr kleine Länder gut erkennbar
-- [ ] Button „Hinweis“ ist pro Frage einmal nutzbar und danach deaktiviert
-- [ ] Nach dem Hinweis ist die Flagge gut erkennbar bei 360 px Breite
-- [ ] Für alle 193 Länder gibt es eine Flagge (Datentest)
-- [ ] In der Standardrunde gibt es keinen Hinweis
-- [ ] Flaggen laden schnell, auch über mobiles Netz
-- [ ] Quelle und Lizenz der Flaggen sind im Repository vermerkt
+- [x] „Flagge zeigen“ ist pro Frage einmal nutzbar
+- [x] Für alle 193 Länder gibt es eine Flagge (Datentest)
+- [x] In Ranglisten-Runden führt der Hinweis zu „ohne Wertung“ und keinem Eintrag (Browser-Test)
+- [x] Flaggen laden erst beim Aufdecken
+- [x] Quelle und Lizenz der Flaggen sind im Repository vermerkt
+- [ ] Jan hat das Aussehen am Handy abgenommen
 
 ## Bezug
 User Stories aus dem PRD: #22
