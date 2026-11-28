@@ -18,6 +18,7 @@ import { browserStore, loadRecords, recordKey, submitResult, type RecordEntry } 
 import { RANKED, rankedFor, rankedLabel, rankedSettings, type RankedMode } from './ranked';
 import { LeaderboardError, fetchTop, plausible, submitEntry } from './leaderboard';
 import { NAME_MAX, checkName } from './name';
+import { flagUrl } from './flags';
 import { loadSettings, normalize, saveSettings, summary, type Settings } from './settings';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -45,6 +46,7 @@ const ICONS = {
   check: 'M6 12 L10 16 L18 8',
   stop: 'M8 8 H16 V16 H8 Z',
   trophy: 'M8 5 H16 V10 A4 4 0 0 1 8 10 Z M8 7 H5 V8 A3 3 0 0 0 8 11 M16 7 H19 V8 A3 3 0 0 1 16 11 M12 14 V17 M9 19 H15',
+  flag: 'M6 21 V4 M6 4 H17 L15 8 L17 12 H6',
   list: 'M9 7 H18 M9 12 H18 M9 17 H18 M5.5 7 H6 M5.5 12 H6 M5.5 17 H6',
 };
 
@@ -254,6 +256,8 @@ function rememberedName(): string {
 // Eintrag in die Bestenliste, nur nach einer Ranglisten-Runde
 function leaderboardEntry(round: Round): HTMLElement {
   const mode = round.endless ? undefined : rankedFor(active);
+  if (mode && round.hints > 0)
+    return el('p', { className: 'hint center' }, ['Mit Hinweis gespielt, kein Eintrag in die Bestenliste.']);
   if (!mode || round.questions.length !== mode.length)
     return el('p', { className: 'hint center' }, ['In die Bestenliste kommen nur Ranglisten-Runden.']);
   if (!plausible(round.score, round.totalMs, mode.length))
@@ -392,8 +396,35 @@ function showQuestion(round: Round) {
   // Antwortzeit: läuft ab Anzeige der Frage bis zur Antwort, die Rückmeldung zählt nicht
   const clock = startQuestionClock(() => performance.now());
 
+  // Hinweis: Flagge oben rechts in der Umriss-Karte. In Ranglisten-Runden erlaubt,
+  // dann zählt die Runde aber nicht mehr für die Bestenliste.
+  const ranked = !round.endless && rankedFor(active);
+  let usedHint = false;
+  const badge = el('p', { className: 'badge' }, [ranked ? `Rangliste · ${rankedLabel(ranked)}` : '']);
+  const hintNote = el('p', { className: 'hint-note' }, ['Mit Hinweis, zählt nicht für die Bestenliste']);
+  const showRankedState = (disqualified: boolean) => {
+    // Platz behalten, damit beim Aufdecken nichts springt
+    badge.hidden = !ranked;
+    badge.style.visibility = disqualified ? 'hidden' : '';
+    hintNote.hidden = !ranked || !disqualified;
+  };
+  showRankedState(round.hints > 0);
+  const flagButton = el('button', { className: 'flag-hint', ariaLabel: 'Flagge als Hinweis zeigen' }, [
+    icon('flag'),
+    'Flagge zeigen',
+  ]);
+  flagButton.onclick = () => {
+    const url = flagUrl(question.country.code);
+    if (!url) return;
+    usedHint = true;
+    flagButton.replaceWith(el('img', { className: 'flag-hint-image', src: url, alt: 'Flagge des gesuchten Landes' }));
+    showRankedState(true);
+  };
+  const stage = el('div', { className: 'stage' }, [shape, flagButton]);
+
   function choose(code: string) {
-    const result = answerQuestion(round, code, clock.elapsed());
+    if (!usedHint) flagButton.remove();
+    const result = answerQuestion(round, code, clock.elapsed(), usedHint);
     latest = result.round;
     buttons.forEach((button, i) => {
       button.disabled = true;
@@ -412,14 +443,13 @@ function showQuestion(round: Round) {
 
   app.replaceChildren(
     el('section', { className: 'screen game' }, [
-      ...(!round.endless && rankedFor(active)
-        ? [el('p', { className: 'badge' }, [`Rangliste · ${rankedLabel(rankedFor(active)!)}`])]
-        : []),
+      badge,
       el('header', { className: 'status' }, [
         el('span', {}, [round.endless ? `Frage ${round.index + 1}` : `Frage ${round.index + 1} von ${round.questions.length}`]),
         el('span', {}, [`${round.score} richtig`]),
       ]),
-      shape,
+      stage,
+      hintNote,
       el('div', { className: 'options' }, buttons),
       feedback,
       mapToggle,
@@ -440,20 +470,33 @@ function finish(round: Round) {
 function showResult(round: Round) {
   const total = round.questions.length;
   const endless = round.endless === true;
-  const update = submitResult(browserStore(), recordKey(active), { score: round.score, total, ms: round.totalMs });
-  const record = update.isNew
-    ? el('p', { className: 'record new' }, [
-        el('span', {}, [update.previous ? 'Neuer Rekord!' : 'Dein erster Rekord']),
-        update.previous ? `Bisher: ${recordText(update.previous, endless)}` : summary(active, pool(active).length),
-      ])
-    : el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord']), recordText(update.best, endless)]);
+  // Runden mit Hinweis verbessern den Rekord nicht, damit er vergleichbar bleibt
+  let record: HTMLElement;
+  if (round.hints > 0) {
+    const best = loadRecords(browserStore())[recordKey(active)];
+    record = el('p', { className: 'record' }, [
+      el('span', {}, ['Mit Hinweis, zählt nicht als Rekord']),
+      best ? `Dein Rekord: ${recordText(best, endless)}` : 'Noch kein Rekord',
+    ]);
+  } else {
+    const update = submitResult(browserStore(), recordKey(active), { score: round.score, total, ms: round.totalMs });
+    record = update.isNew
+      ? el('p', { className: 'record new' }, [
+          el('span', {}, [update.previous ? 'Neuer Rekord!' : 'Dein erster Rekord']),
+          update.previous ? `Bisher: ${recordText(update.previous, endless)}` : summary(active, pool(active).length),
+        ])
+      : el('p', { className: 'record' }, [el('span', {}, ['Dein Rekord']), recordText(update.best, endless)]);
+  }
   const entry = leaderboardEntry(round);
   app.replaceChildren(
     el('section', { className: 'screen result' }, [
       el('p', { className: 'kicker' }, ['Ergebnis']),
       el('h1', {}, ['Geschafft!']),
       el('p', { className: 'score' }, [`${round.score} von ${total}`]),
-      el('p', { className: 'lead' }, [round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt']),
+      el('p', { className: 'lead' }, [
+        (round.score === total ? 'Perfekt, alle richtig!' : 'Länder richtig erkannt') +
+          (round.hints > 0 ? ` · ${round.hints} mit Hinweis` : ''),
+      ]),
       el('p', { className: 'time' }, [`Zeit: ${formatTime(round.totalMs)}`]),
       record,
       entry,

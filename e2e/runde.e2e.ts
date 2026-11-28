@@ -111,7 +111,7 @@ test('freies Spiel endlos lässt sich jederzeit beenden', async ({ page }) => {
   await page.locator('.card', { hasText: 'Freies Spiel' }).click();
   await page.locator('.chip', { hasText: 'Endlos' }).click();
   await page.locator('.card', { hasText: 'Los geht' }).click();
-  await expect(page.locator('.badge')).toHaveCount(0);
+  await expect(page.locator('.badge')).toBeHidden();
   await answerAll(page, 3);
   await page.locator('.option').first().click();
   await page.getByRole('button', { name: 'Runde beenden' }).click();
@@ -129,4 +129,22 @@ test('Vorschau für WhatsApp ist vollständig', async ({ page, request }) => {
   const local = await request.get(new URL(image!).pathname.replace('/laenderquiz/', '/'));
   expect(local.status()).toBe(200);
   expect(local.headers()['content-type']).toContain('image/png');
+});
+
+test('Flaggen-Hinweis: in der Rangliste erlaubt, dann ohne Bestenliste', async ({ page }) => {
+  await fakeSupabase(page);
+  await page.locator('.card', { hasText: 'Rangliste' }).click();
+  await page.locator('.card', { hasText: 'Europa' }).click();
+  await expect(page.locator('.badge')).toBeVisible();
+  await page.locator('.flag-hint').click();
+  const flag = page.locator('.flag-hint-image');
+  await expect(flag).toBeVisible();
+  // Flagge ist geladen (echtes Bild, nicht leer)
+  await expect.poll(() => flag.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  await expect(page.locator('.badge')).toBeHidden();
+  await expect(page.locator('.hint-note')).toBeVisible();
+  await answerAll(page, 5);
+  await expect(page.locator('.result .lead')).toContainText('1 mit Hinweis');
+  await expect(page.locator('.result')).toContainText('kein Eintrag in die Bestenliste');
+  await expect(page.locator('.entry input')).toHaveCount(0);
 });

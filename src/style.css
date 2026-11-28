@@ -377,3 +377,52 @@ button {
   .game .outline, .game .context-map { max-height: 26dvh; }
   .game .card { min-height: 44px; }
 }
+
+/* Hinweis: Flagge oben rechts in der Umriss-Karte */
+.stage { position: relative; }
+.stage > svg { display: block; }
+.flag-hint {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--red);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.flag-hint .icon { width: auto; height: auto; border: 0; }
+.flag-hint .icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.flag-hint-image {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26%;
+  max-width: 120px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid #c9c9c9;
+  box-shadow: 0 0 0 3px var(--white);
+  animation: flag-in 0.45s cubic-bezier(0.15, 0.7, 0.25, 1) both;
+}
+@keyframes flag-in {
+  from { transform: translate(18px, -14px) rotate(8deg) scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.hint-note {
+  margin: -2px 0 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--grey-dark);
+  text-align: center;
+}

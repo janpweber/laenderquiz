@@ -44,6 +44,10 @@ Im Frontend steht nur der **Publishable Key** (`src/leaderboard.ts`), der öffen
 
 Alle Umrisse auf einen Blick: `uebersicht.html` (auf GitHub Pages unter `/laenderquiz/uebersicht.html`).
 
+## Flaggen
+
+Die Flaggen für den Hinweis stammen aus [flag-icons](https://github.com/lipis/flag-icons) (MIT-Lizenz, siehe `src/flags/LICENSE-flag-icons`), Format 4:3, gespeichert als `src/flags/<ISO3>.svg`. Neu kopieren: `node scripts/copy-flags.mjs <Pfad zu flag-icons/flags/4x3>`.
+
 ## Planung
 
 Ziel und Umsetzungsschritte stehen in [docs/prd](docs/prd/laenderquiz.md).
