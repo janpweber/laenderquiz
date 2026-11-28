@@ -3,18 +3,18 @@
 PRD: docs/prd/laenderquiz.md
 Typ: HITL (braucht Jans Supabase-Projekt; Schema wird von Jan ausgeführt)
 Blockiert durch: 004, 005, Supabase-Zugang von Jan
-Status: in Arbeit (Schema muss Jan einmal ausführen)
+Status: erledigt
 
 ## Was
 Versioniertes SQL-Schema: Tabelle für Einträge, Constraints (Name 1–20 Zeichen, 0–10 richtige, plausible Gesamtzeit), serverseitiger Wortfilter, RLS nur Lesen und Einfügen. Nach einer Ranglisten-Runde (Welt 10 oder Kontinent 5, Normal) kann man sich mit Namen eintragen. Bestenliste-Bildschirm mit Reitern je Rangliste sortiert nach richtigen Antworten, dann Zeit. Nach anderen Runden ein Hinweis.
 
 ## Akzeptanzkriterien
-- [ ] Eintrag nur nach Ranglisten-Runde angeboten
-- [ ] Sortierung korrekt
-- [ ] Zu lange/gefilterte Namen und unmögliche Werte werden auch bei direktem API-Aufruf abgelehnt (manuell geprüft)
-- [ ] Ändern/Löschen über den Anon-Key nicht möglich, Löschen im Dashboard möglich
-- [ ] Service-Role-Key nirgends im Repository
-- [ ] Fehler von Supabase werden freundlich angezeigt
+- [x] Eintrag nur nach Ranglisten-Runde angeboten
+- [x] Sortierung korrekt
+- [x] Zu lange/gefilterte Namen und unmögliche Werte werden auch bei direktem API-Aufruf abgelehnt (manuell geprüft)
+- [x] Ändern/Löschen über den Anon-Key nicht möglich, Löschen im Dashboard möglich
+- [x] Service-Role-Key nirgends im Repository
+- [x] Fehler von Supabase werden freundlich angezeigt
 
 ## Bezug
 User Stories aus dem PRD: #15, #16, #17, #18, #20, #21

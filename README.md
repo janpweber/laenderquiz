@@ -14,6 +14,13 @@ npm run build:data # Umrisse aus data/countries.json neu erzeugen
 
 Jeder Push auf `main` wird getestet und automatisch auf GitHub Pages veröffentlicht.
 
+## Tests
+
+- `npm test`: Unit-Tests (Rundenlogik, Daten, Rekord, Bestenliste)
+- `npm run test:e2e`: Browser-Test am Handy-Viewport gegen den Build (`npm run build` vorher). Supabase wird im Test nachgebaut. Läuft auch in GitHub Actions.
+
+Vorschaubild für WhatsApp und Icons neu erzeugen: `npm run build:og` (schreibt nach `public/`).
+
 ## Bestenliste (Supabase)
 
 Die Bestenliste liegt in Supabase und wird direkt über die REST-Schnittstelle angesprochen.
